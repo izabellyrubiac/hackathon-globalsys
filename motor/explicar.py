@@ -113,7 +113,9 @@ def texto(v: Variavel, x: float, aux: dict, lim: float, direcao: int, dispara: b
         b = meta[v.extra["base"]]
         n = int(round(x))
         lb = _lim(v.extra["limiar_base"], v.extra["direcao_base"], fracao=b.fracao)
-        return ("Sinal persistente" if dispara else "Sinal recente"), \
+        ab_b = "alto" if v.extra["direcao_base"] > 0 else "baixo"
+        titulo = f"{b.rotulo_coluna} {ab_b} há {n} {'mês' if n == 1 else 'meses'}" if n > 0 else f"{b.rotulo_coluna} ainda sem persistência"
+        return titulo, \
             (f"{n} {'mês' if n == 1 else 'meses seguidos'} com {minusc(b.rotulo)} {lb} "
              f"(alerta a partir de {fmt_num(lim, 0)})")
     return v.rotulo, f"{v.rotulo}: {fmt_num(x)}"
