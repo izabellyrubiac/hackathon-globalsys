@@ -25,25 +25,34 @@ Documentos de origem: `Desafio - INOVAAPPS 2026.pdf` e `INOVAAPPS_base_de_dados.
 - `carregar()` acentua segmento, porte e plano (Logística, Médio, Avançado); a planilha crua não tem acentos.
 - **Deixar de responder o NPS é comportamento, não dado faltante.**
 
-## Stack (fechada para o MVP)
+## Stack
 | Camada | Tecnologia | Pasta |
 |---|---|---|
-| Análise e score | Python, pandas, scikit-learn, Jupyter (Plotly nos notebooks) | `analise/` |
-| Saída dos dados | JSON estático gerado pelo Python | `analise/gerar_json.py` → `web/public/data/` |
+| Motor genérico (features, seleção supervisionada, regressão logística, explicação) | Python, pandas, scikit-learn | `motor/` |
+| Análise da base INOVAAPPS | Jupyter (Plotly), usa o `motor/` | `analise/` |
+| API (upload da base, mapeamento, treino, resultados) | FastAPI | `api/` |
 | Frontend | Next.js + React + TypeScript | `web/` |
 | Visual | Tailwind + shadcn/ui + Recharts | `web/` |
 
-O ambiente Python usa **uv** (`uv sync`, `uv run ...`). Não existe banco de dados.
+O ambiente Python usa **uv** (`uv sync`, `uv run ...`). Não existe banco de dados: as bases enviadas e os resultados ficam em arquivos (`dados/bases/<id>/`).
+
+### Sistema genérico (qualquer base)
+- O usuário envia a base pela tela (um .xlsx com várias abas ou vários .csv).
+- Na tela ele indica: a **tabela de clientes** e a coluna que identifica o cliente; a **coluna de cancelamento** (situação e mês da saída — obrigatória, é o rótulo do aprendizado supervisionado); e, se houver, a **coluna de valor do contrato** (para a prioridade). O sistema sugere tudo automaticamente; o usuário confirma.
+- Todas as outras tabelas/colunas viram candidatas a variável. O `motor/` gera as variáveis, **escolhe sozinho quais pesam** (seleção supervisionada com validação agrupada por cliente), treina a regressão logística e devolve a fila explicada.
+- A tabela/colunas do cancelamento **nunca** entram como variável (vazamento).
+- A INOVAAPPS é só mais uma base: `analise/score.py` usa o `motor/` com o mapeamento dela.
 
 ## Especialistas (`.claude/agents/`)
-- `analista-dados`: EDA, variáveis, score de risco e validação com histórico.
-- `engenheiro-dados`: pipeline xlsx → JSON e o contrato do JSON.
-- `dev-frontend`: app Next.js, páginas, rotas, tipos e leitura do JSON.
+- `analista-dados`: EDA, motor genérico (variáveis, seleção supervisionada, score) e validação com histórico.
+- `engenheiro-dados`: leitura de bases arbitrárias, inferência de esquema e o contrato do JSON de resultado.
+- `dev-backend`: API FastAPI em `api/` (upload, mapeamento, treino, resultados).
+- `dev-frontend`: app Next.js, páginas (upload/mapeamento, fila, cliente, validação), tipos e chamadas à API.
 - `designer-ui`: visual, componentes shadcn, gráficos Recharts e acessibilidade.
 
 ## Convenções
 - Todo o produto fica em **português (pt-BR)**: interface, nomes de colunas e de campos do JSON. Valores usam `R$ 12.345` e datas usam `jun/2026`.
 - Cores de status fixas em todo o projeto: **Cancelou/risco alto = vermelho**, **atenção = âmbar**, **ativo/saudável = azul-acinzentado**.
 - Notebooks têm quase nenhum texto. Os gráficos precisam se explicar sozinhos, com título descritivo, eixos nomeados e legenda.
-- **Fila** (`analise/score.py`): ordenada **só pela perda anual esperada** (probabilidade × valor_mensal × 12) — decisão do time; o frontend não reordena por faixa. Faixas (alto/atencao/baixo) vêm de cortes de probabilidade, **nunca** de limite de capacidade da equipe; todos os ativos entram na fila. A tela deve mostrar a faixa ao lado da posição.
+- **Fila** (`motor/`): ordenada **só pela perda anual esperada** (probabilidade × valor do contrato × 12; sem coluna de valor, só a probabilidade) — decisão do time; o frontend não reordena por faixa. Faixas (alto/atencao/baixo) vêm de cortes de probabilidade, **nunca** de limite de capacidade da equipe; todos os ativos entram na fila. A tela deve mostrar a faixa ao lado da posição.
 - **A IA não faz conferência visual**: não renderiza gráficos em PNG (kaleido etc.), não tira screenshots e não abre navegador para conferir telas. A verificação é só executar o código sem erros e checar os números; a revisão visual fica com o time.
