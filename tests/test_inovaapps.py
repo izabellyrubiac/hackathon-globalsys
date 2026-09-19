@@ -80,6 +80,12 @@ def test_deterministico(tabelas_inova, inova):
     r3 = treinar(tabelas_inova, m, gerado_em="2026-01-01", config=Config(validar=False))
     assert json.dumps(r2.clientes, sort_keys=True) == json.dumps(r3.clientes, sort_keys=True)
     assert json.dumps(r2.pesos, sort_keys=True) == json.dumps(r3.pesos, sort_keys=True)
-    # o modelo final não depende da validação
-    np.testing.assert_allclose([x["risco"] for x in r2.clientes["clientes"]],
-                               [x["risco"] for x in r.clientes["clientes"]], atol=1e-12)
+    # o modelo final só usa a validação na consistência entre dobras: sem validação, a regra fica desligada e
+    # a diferença de variáveis vem só do limite (quem entrou com a validação estava "fora do limite" sem ela)
+    assert r2.pesos["regras"]["consistencia_dobras"].startswith("desligada")
+    motivo2 = {v["id"]: v["motivo_descarte"] for v in r2.pesos["variaveis"]}
+    for f in set(r.modelo.features) - set(r2.modelo.features):
+        assert motivo2[f].startswith("fora do limite"), (f, motivo2[f])
+    for f in set(r2.modelo.features) - set(r.modelo.features):
+        assert r.oof.modelos["logistica"].frequencia_dobras().get(f, 0.0) < 0.5, f
+    np.testing.assert_allclose(r2.modelo.prob(r2.X.loc[r2.fila["linha"]]), r2.fila["probabilidade"], atol=1e-12)

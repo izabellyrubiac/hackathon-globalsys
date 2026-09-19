@@ -1,8 +1,9 @@
 """Orquestração: `treinar(tabelas, mapeamento)` → `Resultado` com a fila explicada, a validação e os pesos.
 
-Etapas: validar mapeamento → preparar base e painel → gerar candidatas → validação aninhada (out-of-fold
-por cliente) → cortes das faixas → seleção + modelo final em todos os clientes → fila e explicações →
-JSON (`saida.py`).
+Etapas: validar mapeamento → preparar base e painel → gerar candidatas → perfil de escala → modelos
+candidatos (elegibilidade) → validação aninhada de todos nas mesmas dobras (out-of-fold por cliente) →
+escolha do modelo (`modelos_classificacao/escolha.py`) → cortes das faixas → seleção + modelo final em todos
+os clientes (só variáveis consistentes entre as dobras) → fila e explicações → JSON (`saida.py`).
 """
 
 from __future__ import annotations
@@ -21,9 +22,11 @@ from . import saida
 from .config import Config
 from .explicar import acao_sugerida, explicar, meta_persistencias
 from .mapeamento import Mapeamento
-from .modelo import Modelo, ajustar
+from .modelos_classificacao import escolha as esc
+from .modelos_classificacao.metricas import curva, desempenho, escolher_cortes, faixa
+from .modelos_classificacao.validacao_cruzada import ValidacaoOOF, validar
+from .modelos_previsao import ModeloPrevisao, ajustar_modelo
 from .painel import Base, montar_grade, preparar
-from .validar import ValidacaoOOF, curva, desempenho, escolher_cortes, faixa, validar
 from .variaveis import Variavel, gerar
 
 
@@ -38,7 +41,7 @@ class Resultado:
     X: pd.DataFrame                      # candidatas (+ persistências do modelo final)
     aux: pd.DataFrame
     meta: dict[str, Variavel]
-    modelo: Modelo
+    modelo: ModeloPrevisao
     fila: pd.DataFrame                   # ativos no mês de referência, na ordem da fila
     explicacao: pd.DataFrame             # cliente × variável
     curva: pd.DataFrame
@@ -46,6 +49,7 @@ class Resultado:
     oof: ValidacaoOOF | None
     base: Base
     avisos: list[str] = field(default_factory=list)
+    escolha: esc.Escolha | None = None   # modelo escolhido, candidatos e comparação (validacao/pesos.json)
 
     def salvar(self, pasta: str | Path) -> dict[str, Path]:
         """Grava clientes.json, validacao.json e pesos.json (determinísticos, chaves ordenadas)."""
@@ -88,13 +92,29 @@ def treinar(tabelas: dict[str, pd.DataFrame], m: Mapeamento, progresso=None, con
             raise ErroMapeamento(["Menos de 3 meses-cliente de cancelamento com histórico suficiente para treinar: "
                                   "confira a coluna de data de saída e as tabelas mensais."])
 
+        cfg, aviso_perfil = cfg.perfil_automatico(len(base.ids), len(grade))
+        if aviso_perfil:
+            avisos.append(aviso_perfil)
+        T = grade[grade["treino"]]
+        n_pos, n_canc = int(T["y"].sum()), int(T.groupby("cliente")["y"].max().sum())
+        cands = esc.candidatos(cfg, n_pos, n_canc)
+        nomes = esc.a_validar(cands, cfg)
+
         oof = None
         if cfg.validar:
-            p("validação cruzada (seleção aninhada)", 0.1)
-            oof = validar(X, grade, meta, cfg, H, progresso=p, inicio=0.1, fim=0.8)
+            p(f"validação cruzada (seleção aninhada; modelos: {', '.join(nomes)})", 0.1)
+            oof = validar(X, grade, meta, cfg, H, progresso=p, inicio=0.1, fim=0.8, modelos=nomes)
+        escolha = esc.escolher(cands, oof, grade, cfg, n_pos, n_canc)
+        avisos += escolha.avisos
+        freq_dobras = None
+        if oof is not None:
+            oof.usar(escolha.nome)
+            if cfg.min_frac_dobras > 0:
+                freq_dobras = oof.modelos[escolha.nome].frequencia_dobras()
 
-        p("treinando modelo final", 0.82)
-        modelo, X2 = ajustar(X, grade, meta, grade["treino"], cfg, H)
+        p(f"treinando modelo final ({escolha.rotulo})", 0.82)
+        modelo, X2 = ajustar_modelo(escolha.nome, X, grade, meta, grade["treino"], cfg, H, freq_dobras=freq_dobras,
+                                    n_jobs=cfg.n_jobs)
         meta = {**meta, **meta_persistencias(meta, modelo.selecao.persistencias)}
 
         painel = grade.copy()
@@ -122,12 +142,24 @@ def treinar(tabelas: dict[str, pd.DataFrame], m: Mapeamento, progresso=None, con
         fila = fila.set_index("cliente")
         fila["meses_em_alerta"] = _meses_seguidos_alerta(painel, cortes["atencao"]).reindex(fila.index).fillna(0).astype(int)
         E = explicar(modelo, X2, aux, pd.Index(fila["linha"]), painel["mes"], painel["cliente"], meta)
-        acoes = {c: acao_sugerida(E[E["cliente"] == c], fila.at[c, "faixa_risco"], meta, m.acoes) for c in fila.index}
+        E_cli = {c: g for c, g in E.groupby("cliente", sort=False)}
+        acoes = {c: acao_sugerida(E_cli.get(c, E.iloc[0:0]), fila.at[c, "faixa_risco"], meta, m.acoes) for c in fila.index}
         fila["acao_sugerida"] = [acoes[c][0] for c in fila.index]
         fila["variavel_dominante"] = [acoes[c][1] for c in fila.index]
 
+        # checagem (reportada, não forçada): ≥ 3 sinais DISTINTOS (colunas de origem) disparando e faixa baixa
+        disp = E[E["dispara"]] if len(E) else E
+        n_evid = (disp.assign(_col=disp["variavel"].map(lambda v: (meta[v].tabela, meta[v].coluna)))
+                  .groupby("cliente")["_col"].nunique()) if len(disp) else pd.Series(dtype=float)
+        baixo = [c for c in fila.index if fila.at[c, "faixa_risco"] == "baixo" and int(n_evid.get(c, 0)) >= 3]
+        if baixo:
+            avisos.append(f"{len(baixo)} cliente(s) na faixa baixa com evidências de 3 ou mais colunas diferentes disparando "
+                          f"({', '.join(baixo[:10])}{'…' if len(baixo) > 10 else ''}): as evidências passam do limiar, "
+                          "mas o conjunto do modelo não chega ao corte de atenção — vale uma olhada.")
+
         p("gerando resultados", 0.97)
-        r = Resultado({}, {}, {}, m, cfg, painel, X2, aux, meta, modelo, fila, E, cv, cortes, oof, base, avisos)
+        r = Resultado({}, {}, {}, m, cfg, painel, X2, aux, meta, modelo, fila, E, cv, cortes, oof, base, avisos,
+                      escolha)
         r.clientes = saida.clientes_json(r, gerado)
         r.validacao = saida.validacao_json(r, gerado)
         r.pesos = saida.pesos_json(r, gerado)

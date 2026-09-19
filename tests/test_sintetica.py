@@ -15,7 +15,7 @@ def gerar_base(pasta, n=60, n_canc=15, semente=7):
     rng = np.random.default_rng(semente)
     ids = [f"K{i:03d}" for i in range(1, n + 1)]
     meses = pd.period_range("2024-01", "2025-06", freq="M")
-    canc = set(rng.choice(ids, n_canc, replace=False))
+    canc = sorted(rng.choice(ids, n_canc, replace=False))   # ordenado: a base não depende do hash do Python
     saida = {c: meses[int(rng.integers(7, len(meses)))] + 1 for c in canc}   # sai entre ago/2024 e jul/2025
     clientes = pd.DataFrame({"codigo": ids, "regiao": rng.choice(["Norte", "Sul", "Leste"], n),
                              "mrr": rng.integers(500, 5000, n).astype(float),

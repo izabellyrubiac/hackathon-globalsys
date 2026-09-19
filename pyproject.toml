@@ -13,6 +13,7 @@ dependencies = [
     "nbconvert",
     "ipykernel",
     "scikit-learn",
+    "lightgbm>=4.7.0",
 ]
 
 [tool.uv]
@@ -26,3 +27,5 @@ dev = [
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+markers = ["lento: teste demorado (base larga de escala); fora do padrão — rode com `uv run pytest -m lento`"]
+addopts = "-m 'not lento'"

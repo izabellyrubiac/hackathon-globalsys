@@ -1,6 +1,7 @@
 """Explicação de cada cliente da fila: contribuições, evidências, fatores secundários e ação sugerida.
 
-* contribuição_i = coef_i × z_i (log-odds relativos ao cliente médio do treino; z = valor padronizado).
+* contribuição_i = `modelo.contribuicoes` (aditiva em log-odds): na logística coef_i × z_i (relativo ao cliente
+  médio do treino; z = valor padronizado); nas árvores, TreeSHAP exato (relativo ao valor esperado).
 * Uma variável DISPARA quando contribuição > 0 E o valor passou do limiar aprendido (Youden arredondado).
   Contribuição > 0 sem passar do limiar = fator secundário.
 * peso = contribuição / soma das contribuições positivas do cliente (evidências + secundários somam 1).
@@ -142,7 +143,7 @@ def explicar(modelo, X: pd.DataFrame, aux: pd.DataFrame, linhas: pd.Index, meses
             ps = passa(x, lim, d)
             disp = c > 0 and ps
             if np.isnan(x):
-                t, det = v.rotulo, f"{v.rotulo}: sem dado (usada a mediana)"
+                t, det = v.rotulo, f"{v.rotulo}: {getattr(modelo, 'texto_nulo', 'sem dado (usada a mediana)')}"
             else:
                 t, det = texto(v, x, axd, lim, d, disp, meses[i], meta)
             out.append({"cliente": clientes[i], "linha": i, "variavel": f, "valor": x, "contribuicao": c, "limiar": lim,

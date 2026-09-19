@@ -28,7 +28,9 @@ Documentos de origem: `Desafio - INOVAAPPS 2026.pdf` e `INOVAAPPS_base_de_dados.
 ## Stack
 | Camada | Tecnologia | Pasta |
 |---|---|---|
-| Motor genérico (features, seleção supervisionada, regressão logística, explicação) | Python, pandas, scikit-learn | `motor/` |
+| Motor genérico (features, seleção supervisionada, explicação, orquestração) | Python, pandas, scikit-learn | `motor/` |
+| Modelos de previsão (um arquivo por modelo: logística, Random Forest, LightGBM) | scikit-learn, LightGBM | `motor/modelos_previsao/` |
+| Avaliação e escolha dos modelos (um arquivo por método: validação cruzada, métricas, escolha) | Python, pandas | `motor/modelos_classificacao/` |
 | Análise da base INOVAAPPS | Jupyter (Plotly), usa o `motor/` | `analise/` |
 | API (upload da base, mapeamento, treino, resultados) | FastAPI | `api/` |
 | Frontend | Next.js + React + TypeScript | `web/` |
@@ -39,7 +41,8 @@ O ambiente Python usa **uv** (`uv sync`, `uv run ...`). Não existe banco de dad
 ### Sistema genérico (qualquer base)
 - O usuário envia a base pela tela (um .xlsx com várias abas ou vários .csv).
 - Na tela ele indica: a **tabela de clientes** e a coluna que identifica o cliente; a **coluna de cancelamento** (situação e mês da saída — obrigatória, é o rótulo do aprendizado supervisionado); e, se houver, a **coluna de valor do contrato** (para a prioridade). O sistema sugere tudo automaticamente; o usuário confirma.
-- Todas as outras tabelas/colunas viram candidatas a variável. O `motor/` gera as variáveis, **escolhe sozinho quais pesam** (seleção supervisionada com validação agrupada por cliente), treina a regressão logística e devolve a fila explicada.
+- Todas as outras tabelas/colunas viram candidatas a variável. O `motor/` gera as variáveis, **escolhe sozinho quais pesam** (seleção supervisionada com validação agrupada por cliente), treina o modelo e devolve a fila explicada.
+- **Escolha automática do modelo**: logística, Random Forest e LightGBM são validados nas mesmas dobras agrupadas por cliente; fica o de menor log-loss fora da amostra (um mais complexo só vence por mais de 1 erro-padrão). As árvores só são elegíveis com ≥ 200 meses-cliente positivos e ≥ 50 cancelados (na INOVAAPPS fica a logística). Opção avançada: `Config.modelo` força um modelo.
 - A tabela/colunas do cancelamento **nunca** entram como variável (vazamento).
 - A INOVAAPPS é só mais uma base: `analise/score.py` usa o `motor/` com o mapeamento dela.
 

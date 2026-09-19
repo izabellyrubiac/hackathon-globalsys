@@ -5,7 +5,8 @@ Uso:  uv run python analise/gerar_json.py
 Saídas em `web/public/data/` — contrato documentado em `motor/saida.py`:
 * clientes.json   fila dos ativos (ordem = perda anual esperada), evidências, ação e histórico mensal;
 * validacao.json  validação out-of-fold agrupada por cliente com seleção aninhada;
-* pesos.json      todas as variáveis candidatas: selecionadas (coeficiente, frequência) e descartadas (motivo).
+* pesos.json      modelo escolhido (candidatos, log-loss, motivo) e todas as variáveis candidatas: selecionadas
+                  (coeficiente/importância, frequência) e descartadas (motivo).
 JSON determinístico (chaves ordenadas, sem NaN). Só `gerado_em` muda de um dia para o outro
 (fixe com GERADO_EM=AAAA-MM-DD).
 """
@@ -48,6 +49,7 @@ def main() -> None:
           f"{res['em_atencao']} atenção · receita em risco R$ {res['receita_em_risco_mensal']:,.0f}/mês".replace(",", "."))
     print(f"{caminhos['validacao']}: cortes alto ≥ {r.cortes['alto']:.2f}, atenção ≥ {r.cortes['atencao']:.2f}")
     print(f"{caminhos['pesos']}: {len(sel)} de {len(r.pesos['variaveis'])} variáveis selecionadas: {', '.join(sel)}")
+    print(f"modelo: {r.pesos['modelo']['escolhido']} — {r.pesos['modelo']['motivo']}")
 
 
 if __name__ == "__main__":

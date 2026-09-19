@@ -171,6 +171,20 @@ def auc(y: np.ndarray, s: np.ndarray) -> float:
     return float((r[y].sum() - n1 * (n1 + 1) / 2) / (n1 * n0))
 
 
+def auc_colunas(y: np.ndarray, A: np.ndarray) -> np.ndarray:
+    """AUC de cada coluna de A (sem NaN), vetorizada — mesmo resultado de `auc` coluna a coluna."""
+    from scipy.stats import rankdata
+
+    y = np.asarray(y).astype(bool)
+    A = np.asarray(A, dtype=float)
+    n1 = int(y.sum())
+    n0 = len(y) - n1
+    if n1 == 0 or n0 == 0 or A.shape[1] == 0:
+        return np.full(A.shape[1], np.nan)
+    R = rankdata(A, axis=0, method="average")
+    return (R[y].sum(axis=0) - n1 * (n1 + 1) / 2) / (n1 * n0)
+
+
 # --------------------------------------------------------------------------- textos
 def rotulo_coluna(nome: str) -> str:
     """snake_case → 'Uso plataforma pct'."""

@@ -3,12 +3,18 @@
 Todos: determinísticos (mesma entrada → mesma saída; chaves ordenadas ao gravar), sem NaN (→ null),
 floats arredondados. Só `gerado_em` muda de um dia para o outro (fixável com GERADO_EM=AAAA-MM-DD).
 
+Modelos: `nome` ∈ "logistica" | "random_forest" | "lightgbm" (escolhido automaticamente pela validação,
+ou forçado em Config.modelo). `coef`, `odds_ratio`, `C` e `C_l1` só existem na logística (null nas árvores);
+`importancia` existe em todos: |coef| na logística, média de |contribuição TreeSHAP| (log-odds, nas linhas
+de treino) nas árvores. Contribuições são sempre aditivas em log-odds.
+
 clientes.json
 -------------
 gerado_em, mes_referencia ("AAAA-MM"; null no modo fotografia)
-modelo      {tipo, horizonte_meses, cortes{alto, atencao}, formula_prioridade,
+modelo      {nome, rotulo, tipo, horizonte_meses, cortes{alto, atencao}, formula_prioridade,
              coluna_valor {tabela, coluna} | null,
-             variaveis [{id, rotulo, tabela, coluna, transformacao, coef, direcao, limiar}],
+             variaveis [{id, rotulo, tabela, coluna, transformacao, coef (null nas árvores), importancia,
+                         direcao, limiar}],
              series_historico [{chave, tabela, coluna, rotulo, tipo ("numerica"|"categorica")}]}
 resumo      {clientes_ativos, em_risco (alto+atenção), em_risco_alto, em_atencao,
              receita_em_risco_mensal, receita_risco_alto_mensal, perda_anual_esperada_total}
@@ -27,17 +33,26 @@ clientes[]  (todos os ativos, na ordem da fila)
 validacao.json
 --------------
 gerado_em, metodo, honestidade, horizonte_meses, n_dobras, painel{…}, cortes{alto, atencao, youden, criterios},
+escolha{modelo, rotulo, forcado, motivo, criterio},
+modelos[{nome, rotulo, complexidade, elegivel, motivo_elegibilidade, avaliado, escolhido, log_loss, log_loss_ep,
+         log_loss_conjunto, auc_linhas, auc_k1..3}]   (métricas só nos avaliados; mesmas dobras para todos)
 metodos[{id, nome, canc_k1..3, ativos_hoje, ativos_algum_mes, meses_alarme_ativos_pct, antecedencia_mediana}],
 auc_por_mes[{k, score, auc, n, n_canc}], precisao_topo[{k, top, cancelados, metodo}], curva[…],
-coeficientes[{variavel, rotulo, coluna, coef, odds_ratio, direcao, frequencia_dobras, min_dobras, max_dobras}],
+coeficientes[{variavel, rotulo, coluna, coef, odds_ratio, importancia, direcao, frequencia_dobras, min_dobras,
+              max_dobras}]  (min/max nas dobras: do coeficiente na logística, da importância nas árvores),
 intercepto, C, cancelados[{cliente_id, valor_mensal, mes_saida, risco_k1..3, faixa_k1..3}], avisos, config
 
 pesos.json
 ----------
-gerado_em, horizonte_meses, regras{…}, resumo{n_candidatas, n_selecionadas, limite_variaveis, C_l1, C_l2, …},
-variaveis[{id, rotulo, tabela, coluna, transformacao, categoria, selecionada, coef, odds_ratio, auc_univariada,
-           auc_treino, direcao, direcao_texto, frequencia_selecao, consistencia_sinal, frequencia_dobras,
-           limiar, nulos_pct, vazamento, motivo_descarte}]
+gerado_em, horizonte_meses,
+modelo{escolhido, rotulo, forcado, motivo, criterio, elegibilidade{min_pos_arvores, min_canc_arvores,
+       positivos_treino, cancelados}, candidatos[… como validacao.modelos]},
+regras{…}, resumo{n_candidatas, n_selecionadas, limite_variaveis, C_l1, C_l2, intercepto, metodo_selecao,
+       retiradas_consistencia_dobras, n_arvores, calibracao{a, b} (árvores), …},
+variaveis[{id, rotulo, tabela, coluna, transformacao, categoria, selecionada, coef, odds_ratio, importancia,
+           auc_univariada, auc_treino, direcao, direcao_texto, frequencia_selecao (logística: rodadas da
+           stability selection; árvores: rodadas em que venceu a maior sombra), consistencia_sinal (null nas
+           árvores), frequencia_dobras, limiar, nulos_pct, vazamento, motivo_descarte}]
 """
 
 from __future__ import annotations
@@ -49,6 +64,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from .modelos_previsao.base import MODELOS
 from .util import fmt_num
 
 NOME_METODO = {
@@ -88,6 +104,21 @@ def gravar(obj: dict, caminho: str | Path) -> Path:
     txt = json.dumps(limpo(obj), ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
     caminho.write_text(txt + "\n", encoding="utf-8")
     return caminho
+
+
+def _coefs(r) -> dict[str, float]:
+    """Coeficientes da logística (vazio nas árvores)."""
+    return dict(zip(r.modelo.features, map(float, r.modelo.coef))) if hasattr(r.modelo, "coef") else {}
+
+
+TIPO_MODELO = {
+    "logistica": "Regressão logística L2 (variáveis padronizadas) com seleção automática por stability selection; "
+                 "painel cliente × mês sem vazamento",
+    "random_forest": "Random Forest (LightGBM rf) monotônica e calibrada (Platt fora da amostra), seleção por "
+                     "sombras (estilo Boruta); painel cliente × mês sem vazamento",
+    "lightgbm": "LightGBM (gradient boosting) monotônico, parada antecipada por cliente e calibração Platt fora da "
+                "amostra, seleção por sombras (estilo Boruta); painel cliente × mês sem vazamento",
+}
 
 
 def _mes(p) -> str | None:
@@ -141,17 +172,21 @@ def clientes_json(r, gerado: str) -> dict:
     tem_valor = r.base.valor is not None
     hist = P[P["tem_dados"]].sort_values(["cliente", "mes"])
     lista = []
+    vazio = E.iloc[0:0]
+    E_cli = {c: g for c, g in E.groupby("cliente", sort=False)}
+    H_cli = {c: g for c, g in hist.groupby("cliente", sort=False)} if not r.base.fotografia else {}
+    vals_d = {k: v.to_dict() for k, v in vals.items()}
     for cid, f in F.iterrows():
-        e = E[E["cliente"] == cid]
+        e = E_cli.get(cid, vazio)
         dom = f["variavel_dominante"]
         h = []
-        if not r.base.fotografia:
-            for _, row in hist[hist["cliente"] == cid].iterrows():
+        if not r.base.fotografia and cid in H_cli:
+            for mes, pf in zip(H_cli[cid]["mes"], H_cli[cid]["p_final"]):
                 valores = {}
                 for s in series:
-                    x = vals[s["chave"]].get((cid, row["mes"]), None)
+                    x = vals_d[s["chave"]].get((cid, mes), None)
                     valores[s["chave"]] = (limpo(x, 2) if s["tipo"] == "numerica" else (None if x is None or pd.isna(x) else str(x)))
-                h.append({"mes_ref": str(row["mes"]), "risco": limpo(row["p_final"], 4), "valores": valores})
+                h.append({"mes_ref": str(mes), "risco": limpo(pf, 4), "valores": valores})
         attrs = {c: (None if pd.isna(x) else str(x)) for c, x in r.base.atributos.loc[cid].items()}
         lista.append({
             "cliente_id": cid, "atributos": attrs,
@@ -171,16 +206,18 @@ def clientes_json(r, gerado: str) -> dict:
     alto = F[F["faixa_risco"] == "alto"]
     soma = (lambda s: round(float(s.sum()), 2)) if tem_valor else (lambda s: None)
     m = r.mapeamento
+    coefs = _coefs(r)
     variaveis = [{"id": f, "rotulo": meta[f].rotulo, "tabela": meta[f].tabela, "coluna": meta[f].coluna,
-                  "transformacao": meta[f].transformacao, "coef": round(float(c), 4),
+                  "transformacao": meta[f].transformacao, "coef": coefs.get(f),
+                  "importancia": r.modelo.importancias.get(f),
                   "direcao": r.modelo.direcoes[f], "limiar": limpo(r.modelo.limiares.get(f), 4)}
-                 for f, c in zip(r.modelo.features, r.modelo.coef)]
+                 for f in r.modelo.features]
     return limpo({
         "gerado_em": gerado,
         "mes_referencia": _mes(r.base.mes_ref),
         "modelo": {
-            "tipo": "Regressão logística L2 (variáveis padronizadas) com seleção automática por stability selection; "
-                    "painel cliente × mês sem vazamento",
+            "nome": r.modelo.nome, "rotulo": MODELOS[r.modelo.nome].rotulo,
+            "tipo": TIPO_MODELO[r.modelo.nome],
             "horizonte_meses": int(m.horizonte_meses),
             "cortes": {"alto": r.cortes["alto"], "atencao": r.cortes["atencao"]},
             "formula_prioridade": ("risco × valor_mensal × 12 (perda anual esperada)" if tem_valor
@@ -220,7 +257,8 @@ def validacao_json(r, gerado: str) -> dict:
                    "criterio_alto": "menor corte com precisão ≥ 50% nos meses-cliente marcados (validação out-of-fold)",
                    "criterio_atencao": "corte de Youden nos meses-cliente de treino (sensibilidade − alarme falso, out-of-fold)"},
         "avisos": r.avisos, "config": cfg.to_dict(),
-        "intercepto": r.modelo.intercepto, "C": r.modelo.C,
+        "intercepto": r.modelo.intercepto, "C": getattr(r.modelo, "C", None),
+        "escolha": _escolha(r), "modelos": r.escolha.candidatos_dict() if r.escolha else [],
     }
     if r.oof is None:
         return limpo({**base, "metodo": "Validação desligada", "metodos": [], "auc_por_mes": [], "precisao_topo": [],
@@ -235,10 +273,13 @@ def validacao_json(r, gerado: str) -> dict:
                       precisao_topo(P, oof.base_score).assign(metodo="melhor_variavel")])
     dob = oof.dobras
     co = []
-    for f, c in zip(r.modelo.features, r.modelo.coef):
+    coefs = _coefs(r)
+    for f in r.modelo.features:
+        c = coefs.get(f)
         d = dob[f] if f in dob else pd.Series(dtype=float)
-        co.append({"variavel": f, "rotulo": r.meta[f].rotulo, "coluna": r.meta[f].coluna, "coef": float(c),
-                   "odds_ratio": float(np.exp(c)), "direcao": r.modelo.direcoes[f],
+        co.append({"variavel": f, "rotulo": r.meta[f].rotulo, "coluna": r.meta[f].coluna, "coef": c,
+                   "odds_ratio": float(np.exp(c)) if c is not None else None,
+                   "importancia": r.modelo.importancias.get(f), "direcao": r.modelo.direcoes[f],
                    "frequencia_dobras": float(d.notna().sum() / oof.n_dobras),
                    "min_dobras": float(d.min()) if d.notna().any() else None,
                    "max_dobras": float(d.max()) if d.notna().any() else None})
@@ -258,11 +299,16 @@ def validacao_json(r, gerado: str) -> dict:
     return limpo({
         **base,
         "metodo": (f"Validação out-of-fold agrupada por cliente: {oof.n_dobras} dobras estratificadas por cancelou; "
-                   "em cada uma, o motor inteiro (filtro, AUC, persistência, redundância, stability selection, C e "
-                   "limiares) é refeito só com os clientes de treino e os de teste recebem probabilidade em todos os meses"),
+                   "em cada uma, o motor inteiro (filtro, AUC, persistência, redundância, seleção do modelo, "
+                   "ajuste, calibração e limiares) é refeito só com os clientes de treino e os de teste recebem "
+                   f"probabilidade em todos os meses. Modelos validados nas mesmas dobras: "
+                   f"{', '.join(MODELOS[m].rotulo for m in oof.modelos)}; métricas abaixo = {MODELOS[oof.escolhido].rotulo}"),
         "honestidade": ("A seleção de variáveis é aninhada na validação, então as métricas não são otimistas pela escolha "
-                        "das variáveis. Só os dois cortes das faixas são escolhidos olhando as probabilidades out-of-fold "
-                        "(leve otimismo nas contagens por faixa; a AUC e a precisão no topo não dependem dos cortes)."),
+                        "das variáveis. Decisões tomadas depois de ver a validação: os dois cortes das faixas (leve "
+                        "otimismo nas contagens por faixa; a AUC e a precisão no topo não dependem dos cortes), a escolha "
+                        "do modelo entre os candidatos (pequeno otimismo quando há mais de um avaliado) e a consistência "
+                        f"entre dobras do modelo final (prioridade às variáveis presentes em ≥ {100 * cfg.min_frac_dobras:.0f}% "
+                        "das dobras; as métricas medem o procedimento de cada dobra, sem essa regra)."),
         "n_dobras": oof.n_dobras,
         "metodos": metodos,
         "auc_por_mes": auc.to_dict("records"),
@@ -278,7 +324,8 @@ def validacao_json(r, gerado: str) -> dict:
 def pesos_json(r, gerado: str) -> dict:
     rel = r.modelo.selecao.relatorio.copy()
     cfg = r.config
-    coef = dict(zip(r.modelo.features, r.modelo.coef))
+    coef = _coefs(r)
+    arvore = not coef and MODELOS[r.modelo.nome].arvore
     dob = r.oof.dobras if r.oof is not None else pd.DataFrame()
     linhas = []
     for vid, x in rel.iterrows():
@@ -286,11 +333,12 @@ def pesos_json(r, gerado: str) -> dict:
         if v is None:
             continue
         d = x.get("direcao")
-        sel = vid in coef
+        sel = vid in r.modelo.features
         linhas.append({
             "id": vid, "rotulo": v.rotulo, "tabela": v.tabela, "coluna": v.coluna, "transformacao": v.transformacao,
             "categoria": v.categoria, "selecionada": sel,
-            "coef": coef.get(vid), "odds_ratio": float(np.exp(coef[vid])) if sel else None,
+            "coef": coef.get(vid), "odds_ratio": float(np.exp(coef[vid])) if vid in coef else None,
+            "importancia": r.modelo.importancias.get(vid),
             "auc_univariada": x.get("auc_oof"), "auc_treino": x.get("auc_treino"),
             "direcao": None if pd.isna(d) else int(d),
             "direcao_texto": None if pd.isna(d) else ("maior = mais risco" if d > 0 else "menor = mais risco"),
@@ -319,22 +367,56 @@ def pesos_json(r, gerado: str) -> dict:
             "persistencia": f"meses seguidos na zona de risco para as {cfg.n_persistencia} colunas de maior AUC "
                             "(limiar de Youden arredondado)",
             "redundancia": f"|Spearman| > {cfg.max_spearman} → fica a de maior AUC",
-            "estabilidade": (f"{cfg.rodadas} subamostras de {fmt_num(100 * cfg.frac_subamostra, 0)}% dos clientes, "
-                             f"regressão logística {'L1' if cfg.l1_ratio >= 1 else f'elastic-net (l1_ratio {cfg.l1_ratio})'} "
-                             "com C por validação agrupada; selecionada se escolhida em ≥ "
-                             f"{fmt_num(100 * cfg.limiar_frequencia, 0)}% das rodadas com o mesmo sinal em ≥ "
-                             f"{fmt_num(100 * cfg.consistencia_sinal, 0)}% delas e sinal igual à direção univariada"),
+            "estabilidade": ((f"{cfg.rodadas_arvores} subamostras de {fmt_num(100 * cfg.frac_subamostra, 0)}% dos "
+                              "clientes com uma cópia embaralhada (sombra) de cada variável; LightGBM rápido e "
+                              "importância por ganho; fica se superar a maior sombra em ≥ "
+                              f"{fmt_num(100 * cfg.limiar_sombra, 0)}% das rodadas (estilo Boruta)") if arvore else
+                             (f"{cfg.rodadas} subamostras de {fmt_num(100 * cfg.frac_subamostra, 0)}% dos clientes, "
+                              f"regressão logística {'L1' if cfg.l1_ratio >= 1 else f'elastic-net (l1_ratio {cfg.l1_ratio})'} "
+                              "com C por validação agrupada; selecionada se escolhida em ≥ "
+                              f"{fmt_num(100 * cfg.limiar_frequencia, 0)}% das rodadas com o mesmo sinal em ≥ "
+                              f"{fmt_num(100 * cfg.consistencia_sinal, 0)}% delas e sinal igual à direção univariada")),
+            "consistencia_dobras": ((f"modelo final: variáveis selecionadas em ≥ {fmt_num(100 * cfg.min_frac_dobras, 0)}% "
+                                     "das dobras externas da validação têm prioridade no limite; "
+                                     + ("as demais só entram se sobrar vaga" if cfg.modo_dobras == "priorizar"
+                                        else "as demais nunca entram"))
+                                    if r.oof is not None and cfg.min_frac_dobras > 0 else "desligada (sem validação)"),
             "limite": (f"no máximo mín(positivos/{cfg.linhas_por_variavel}, cancelados/{cfg.clientes_por_variavel}) "
                        f"variáveis, mínimo 2 = mín({n_pos}/{cfg.linhas_por_variavel}, {n_canc}/"
                        f"{cfg.clientes_por_variavel}) = {sel.limite}"),
-            "modelo_final": "regressão logística L2 nas selecionadas, C por GroupKFold (log-loss), sem class_weight; "
-                            "variável com sinal invertido sai",
+            "modelo_final": (TIPO_MODELO[r.modelo.nome] + "; monotonia na direção aprendida; nº de árvores e "
+                             "calibração por GroupKFold (clientes inteiros)") if arvore else
+                            ("regressão logística L2 nas selecionadas, C por GroupKFold (log-loss), sem class_weight; "
+                             "variável com sinal invertido sai"),
+            "escolha_modelo": r.escolha.criterio if r.escolha else None,
             "limiar_evidencia": "corte de Youden no treino, arredondado para um número redondo (mantendo ≥ 90% do J)",
         },
+        "modelo": _modelo_pesos(r),
         "resumo": {"n_candidatas": len(linhas), "n_selecionadas": len(r.modelo.features), "limite_variaveis": sel.limite,
-                   "C_l1": sel.C_l1, "C_l2": r.modelo.C, "intercepto": r.modelo.intercepto,
+                   "metodo_selecao": sel.metodo,
+                   "C_l1": sel.C_l1, "C_l2": getattr(r.modelo, "C", None), "intercepto": r.modelo.intercepto,
+                   "n_arvores": getattr(r.modelo, "n_arvores", None),
+                   "calibracao": {"a": r.modelo.a, "b": r.modelo.b} if hasattr(r.modelo, "a") else None,
                    "linhas_treino": int(r.painel["treino"].sum()), "positivos_treino": n_pos, "cancelados": n_canc,
                    "retiradas_sinal_invertido": r.modelo.removidas,
+                   "retiradas_consistencia_dobras": sorted(l["id"] for l in linhas if str(l["motivo_descarte"])
+                                                           .startswith("selecionada em só")),
                    "suspeitas_vazamento": [l["id"] for l in linhas if l["vazamento"]]},
         "variaveis": linhas,
     })
+
+
+# --------------------------------------------------------------------------- modelo escolhido
+def _escolha(r) -> dict | None:
+    e = r.escolha
+    if e is None:
+        return None
+    return {"modelo": e.nome, "rotulo": e.rotulo, "forcado": e.forcado, "motivo": e.motivo, "criterio": e.criterio}
+
+
+def _modelo_pesos(r) -> dict | None:
+    e = r.escolha
+    if e is None:
+        return None
+    return {"escolhido": e.nome, "rotulo": e.rotulo, "forcado": e.forcado, "motivo": e.motivo, "criterio": e.criterio,
+            "elegibilidade": e.elegibilidade, "candidatos": e.candidatos_dict()}
