@@ -1,0 +1,19 @@
+[project]
+name = "inovaapps-churn"
+version = "0.1.0"
+description = "INOVAAPPS 2026 — análise e score de risco de cancelamento"
+requires-python = ">=3.12"
+dependencies = [
+    "pandas",
+    "openpyxl",
+    "plotly",
+    "jupyterlab",
+    "ipywidgets",
+    "nbformat",
+    "nbconvert",
+    "ipykernel",
+    "scikit-learn",
+]
+
+[tool.uv]
+package = false
