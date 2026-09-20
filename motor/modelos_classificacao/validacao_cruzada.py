@@ -24,7 +24,8 @@ from joblib import Parallel, delayed
 from sklearn.model_selection import StratifiedKFold
 
 from ..config import Config
-from ..modelos_previsao.base import MODELOS, ajustar_modelo
+from ..delta import ajustar_modelo_com_delta
+from ..modelos_previsao.base import MODELOS
 from ..selecao import limiar_youden, pre_selecao
 from .metricas import log_loss_dobras
 
@@ -72,7 +73,7 @@ def _dobra(i, X, grade, meta, treino_cli, teste_cli, cfg, H, nomes):
     pre = pre_selecao(X, grade, meta, tr, cfg, H)
     por_modelo = {}
     for nome in nomes:
-        mod, X2 = ajustar_modelo(nome, X, grade, meta, tr, cfg, H, pre=pre)
+        mod, X2, _ = ajustar_modelo_com_delta(nome, X, grade, meta, tr, cfg, H, pre=pre)
         por_modelo[nome] = (mod.prob(X2.loc[te]), _info_dobra(mod))
     # baseline: melhor variável sozinha (AUC out-of-fold no treino da dobra)
     rel = pre.relatorio

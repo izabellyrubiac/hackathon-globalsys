@@ -51,6 +51,13 @@ class Config:
     taxa_aprendizado: float = 0.05
     folhas: int = 15                 # num_leaves
     min_linhas_folha: int = 20       # min_data_in_leaf
+    # delta de risco (motor em dois estágios — ver motor/delta.py)
+    delta_risco: bool = False        # True: acrescenta a candidata "risco de hoje − risco do mês passado"
+    delta_risco_3m: bool = True      # … e também "risco de hoje − média dos 3 meses anteriores"
+    delta_dobras: int = 5            # estágio 1 cross-fit por cliente nas linhas de treino (0 = sem cross-fit)
+    delta_placebo: bool = False      # diagnóstico: embaralha o delta (mesma distribuição, informação zero).
+                                     # Braço de controle — mede quanto da diferença entre "com" e "sem" delta é
+                                     # só o ruído de refazer a seleção com duas candidatas a mais.
     # validação
     dobras: int = 10                 # validação externa agrupada por cliente (seleção refeita em cada dobra)
     validar: bool = True

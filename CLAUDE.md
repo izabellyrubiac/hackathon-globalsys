@@ -32,7 +32,7 @@ Documentos de origem: `Desafio - INOVAAPPS 2026.pdf` e `INOVAAPPS_base_de_dados.
 | Modelos de previsão (um arquivo por modelo: logística, Random Forest, LightGBM) | scikit-learn, LightGBM | `motor/modelos_previsao/` |
 | Avaliação e escolha dos modelos (um arquivo por método: validação cruzada, métricas, escolha) | Python, pandas | `motor/modelos_classificacao/` |
 | Análise da base INOVAAPPS | Jupyter (Plotly), usa o `motor/` | `analise/` |
-| API (upload da base, mapeamento, treino, resultados) | FastAPI | `api/` |
+| API (upload, mapeamento, treino, versões de modelo, resultados) | FastAPI | `api/` |
 | Frontend | Next.js + React + TypeScript | `web/` |
 | Visual | Tailwind + shadcn/ui + Recharts | `web/` |
 
@@ -45,11 +45,21 @@ O ambiente Python usa **uv** (`uv sync`, `uv run ...`). Não existe banco de dad
 - **Escolha automática do modelo**: logística, Random Forest e LightGBM são validados nas mesmas dobras agrupadas por cliente; fica o de menor log-loss fora da amostra (um mais complexo só vence por mais de 1 erro-padrão). As árvores só são elegíveis com ≥ 200 meses-cliente positivos e ≥ 50 cancelados (na INOVAAPPS fica a logística). Opção avançada: `Config.modelo` força um modelo.
 - A tabela/colunas do cancelamento **nunca** entram como variável (vazamento).
 - A INOVAAPPS é só mais uma base: `analise/score.py` usa o `motor/` com o mapeamento dela.
+- **Versões de modelo**: cada treino de uma base vira uma execução versionada (`dados/bases/<id>/execucoes/<execucao_id>/`) com os resultados e um `resumo.json`. A API lista, compara e permite ativar uma delas; `/api/bases/{id}/clientes` serve sempre a ativa.
+
+### Bases reais (postos)
+- `amostra_redes/` (3.000 clientes de 35 redes, 1,6 M de vendas) → `uv run python analise/redes/preparar.py` gera `amostra_redes/base_motor/*.csv`.
+- Essas bases **não têm campo de cancelamento**. Regra do time (em `analise/preparo_comum.py`): **um mês sem nenhuma compra = cancelou**; depois da saída o cliente **não é reavaliado**; o último mês da exportação (incompleto) fica de fora. Resultado: 2.910 clientes, 1.840 cancelados, 1.070 ativos.
+- Foi a primeira base real em que as árvores ficaram elegíveis: o **LightGBM venceu** a logística por mais de 1 erro-padrão.
+- O valor do contrato é o gasto mensal médio antes da saída: serve só para a fila e entra em `colunas_ignoradas`.
+
+### Delta de risco: testado e descartado
+`risco do mês − risco do mês anterior` como variável (`motor/delta.py`, `Config.delta_risco`, padrão `False`). Medido nas duas bases: **não melhora o acerto** — um braço placebo, com o delta embaralhado, entrega o mesmo ganho — e custa **3,2× o tempo de treino**. Fica como opção avançada desligada; a API aceita, o front não mostra. Resultados em `amostra_redes/resultado/delta/`, script em `analise/experimentos/delta_risco.py`.
 
 ## Especialistas (`.claude/agents/`)
 - `analista-dados`: EDA, motor genérico (variáveis, seleção supervisionada, score) e validação com histórico.
 - `engenheiro-dados`: leitura de bases arbitrárias, inferência de esquema e o contrato do JSON de resultado.
-- `dev-backend`: API FastAPI em `api/` (upload, mapeamento, treino, resultados).
+- `dev-backend`: API FastAPI em `api/` (upload, mapeamento, treino, execuções/versões, resultados).
 - `dev-frontend`: app Next.js, páginas (upload/mapeamento, fila, cliente, validação), tipos e chamadas à API.
 - `designer-ui`: visual, componentes shadcn, gráficos Recharts e acessibilidade.
 
@@ -58,4 +68,5 @@ O ambiente Python usa **uv** (`uv sync`, `uv run ...`). Não existe banco de dad
 - Cores de status fixas em todo o projeto: **Cancelou/risco alto = vermelho**, **atenção = âmbar**, **ativo/saudável = azul-acinzentado**.
 - Notebooks têm quase nenhum texto. Os gráficos precisam se explicar sozinhos, com título descritivo, eixos nomeados e legenda.
 - **Fila** (`motor/`): ordenada **só pela perda anual esperada** (probabilidade × valor do contrato × 12; sem coluna de valor, só a probabilidade) — decisão do time; o frontend não reordena por faixa. Faixas (alto/atencao/baixo) vêm de cortes de probabilidade, **nunca** de limite de capacidade da equipe; todos os ativos entram na fila. A tela deve mostrar a faixa ao lado da posição.
+- A pasta `frontend/` na raiz veio de fora deste trabalho: **ignorar**. O app oficial é `web/`.
 - **A IA não faz conferência visual**: não renderiza gráficos em PNG (kaleido etc.), não tira screenshots e não abre navegador para conferir telas. A verificação é só executar o código sem erros e checar os números; a revisão visual fica com o time.

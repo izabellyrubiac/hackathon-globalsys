@@ -11,7 +11,8 @@ Uso:
     r.salvar("pasta/")                              # grava os três JSON
 
 Módulos: leitura (arquivos), esquema (tipos/papéis/sugestões), mapeamento, painel (tempo e rótulo),
-variaveis (candidatas), selecao (seleção da logística + pré-seleção comum), selecao_arvores (sombras),
+variaveis (candidatas), delta (candidata de variação do risco, `Config.delta_risco`),
+selecao (seleção da logística + pré-seleção comum), selecao_arvores (sombras),
 modelos_previsao/ (um arquivo por modelo: logística, Random Forest, LightGBM), modelos_classificacao/
 (validação cruzada, métricas e escolha automática do modelo), explicar, saida. `modelo` e `validar` só
 reexportam (compatibilidade).

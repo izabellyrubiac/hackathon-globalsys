@@ -14,6 +14,9 @@ dependencies = [
     "ipykernel",
     "scikit-learn",
     "lightgbm>=4.7.0",
+    "fastapi>=0.141.1",
+    "uvicorn[standard]>=0.53.0",
+    "python-multipart>=0.0.32",
 ]
 
 [tool.uv]
@@ -26,6 +29,6 @@ dev = [
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
-testpaths = ["tests"]
+testpaths = ["tests", "api/tests"]
 markers = ["lento: teste demorado (base larga de escala); fora do padrão — rode com `uv run pytest -m lento`"]
 addopts = "-m 'not lento'"

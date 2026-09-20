@@ -109,6 +109,15 @@ def texto(v: Variavel, x: float, aux: dict, lim: float, direcao: int, dispara: b
         return f"{R} {ab}", f"{R}: {fmt_num(x)} em média (limite {L})"
     if tr == "freq_eventos":
         return f"{R}: {v.categoria}", f"{R} = {v.categoria} em {fmt_pct(x)} dos registros (limite {L})"
+    if tr == "delta_risco":
+        ref = "o mês anterior" if (v.janela or 1) <= 1 else f"a média dos {v.janela} meses anteriores"
+        verbo = "caiu" if x < 0 else ("subiu" if x > 0 else "ficou parado")
+        lim_txt = f"{'alta' if lim > 0 else 'queda'} de {fmt_num(abs(100 * lim), 1)} p.p." if direcao * lim > 0 \
+            else f"variação {_lim(100 * lim, direcao, sinal=True)} p.p."
+        if not x:
+            return f"Risco estável vs {ref}", f"O risco previsto não mudou vs {ref} (limite: {lim_txt})"
+        return (f"Risco {verbo} {fmt_num(abs(100 * x))} p.p. vs {ref}",
+                f"O risco previsto {verbo} {fmt_num(abs(100 * x), 1)} p.p. vs {ref} (limite: {lim_txt})")
     if tr == "persistencia":
         b = meta[v.extra["base"]]
         n = int(round(x))

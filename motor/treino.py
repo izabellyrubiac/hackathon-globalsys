@@ -20,12 +20,13 @@ from sklearn.exceptions import ConvergenceWarning
 
 from . import saida
 from .config import Config
+from .delta import ajustar_modelo_com_delta
 from .explicar import acao_sugerida, explicar, meta_persistencias
 from .mapeamento import Mapeamento
 from .modelos_classificacao import escolha as esc
 from .modelos_classificacao.metricas import curva, desempenho, escolher_cortes, faixa
 from .modelos_classificacao.validacao_cruzada import ValidacaoOOF, validar
-from .modelos_previsao import ModeloPrevisao, ajustar_modelo
+from .modelos_previsao import ModeloPrevisao
 from .painel import Base, montar_grade, preparar
 from .variaveis import Variavel, gerar
 
@@ -113,8 +114,8 @@ def treinar(tabelas: dict[str, pd.DataFrame], m: Mapeamento, progresso=None, con
                 freq_dobras = oof.modelos[escolha.nome].frequencia_dobras()
 
         p(f"treinando modelo final ({escolha.rotulo})", 0.82)
-        modelo, X2 = ajustar_modelo(escolha.nome, X, grade, meta, grade["treino"], cfg, H, freq_dobras=freq_dobras,
-                                    n_jobs=cfg.n_jobs)
+        modelo, X2, meta = ajustar_modelo_com_delta(escolha.nome, X, grade, meta, grade["treino"], cfg, H,
+                                                    freq_dobras=freq_dobras, n_jobs=cfg.n_jobs)
         meta = {**meta, **meta_persistencias(meta, modelo.selecao.persistencias)}
 
         painel = grade.copy()
