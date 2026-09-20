@@ -10,9 +10,8 @@ import * as api from '../api/cliente'
 import { useRecurso } from '../api/ganchos'
 import type { BaseResumo, ClienteFila, Faixa as TFaixa } from '../api/tipos'
 import { Carregando, CaixaErro, Vazio } from '../componentes/Estados'
-import { Chip, Desativado, Faixa } from '../componentes/Faixa'
+import { Chip, Faixa } from '../componentes/Faixa'
 import { CampoSelect, Select } from '../componentes/Select'
-import { PENDENCIAS } from '../desativado'
 import {
   FILTROS_VAZIOS, SETA, aplicarFiltros, atributosDisponiveis, rotuloAtributo, temFiltro, variacao,
   type Filtros,
@@ -47,6 +46,7 @@ export function Fila({ bases, carregandoBases }: { bases: BaseResumo[]; carregan
   const visiveis = filtrados.slice(0, mostrar)
   const clienteAberto = clientes.find((c) => c.cliente_id === aberto) || null
   const temValor = dados?.modelo?.coluna_valor != null
+  const temScore = (dados?.clientes ?? []).some((c) => c.score != null)
 
   function mudarFiltro(f: Partial<Filtros>) {
     setFiltros((a) => ({ ...a, ...f }))
@@ -118,6 +118,7 @@ export function Fila({ bases, carregandoBases }: { bases: BaseResumo[]; carregan
                     <thead>
                       <tr>
                         <th title="Posição na fila, definida pelo motor. A faixa vem do risco.">#</th>
+                        {temScore && <th title="Score de 0 a 100 com os pesos desta versão; ordena a fila.">Score</th>}
                         <th>Cliente</th>
                         {temValor && <th>Valor mensal</th>}
                         <th>Chance de cancelamento</th>
@@ -129,7 +130,7 @@ export function Fila({ bases, carregandoBases }: { bases: BaseResumo[]; carregan
                     </thead>
                     <tbody>
                       {visiveis.map((c) => (
-                        <LinhaFila key={c.cliente_id} c={c} temValor={temValor}
+                        <LinhaFila key={c.cliente_id} c={c} temValor={temValor} temScore={temScore}
                                aoAbrir={() => setAberto(c.cliente_id)} />
                       ))}
                     </tbody>
@@ -181,10 +182,13 @@ export function Fila({ bases, carregandoBases }: { bases: BaseResumo[]; carregan
                 </>
               )}
 
-              <Desativado pendencia={PENDENCIAS.inicioContrato}>
-                <label htmlFor="f-desde">Contrato iniciado desde</label>
-                <input id="f-desde" type="month" disabled tabIndex={-1} />
-              </Desativado>
+              {(dados?.modelo?.colunas_data ?? []).map((d) => (
+                <div key={d.coluna}>
+                  <label htmlFor={`f-d-${d.coluna}`}>{d.rotulo} desde</label>
+                  <input id={`f-d-${d.coluna}`} type="month" value={filtros.datas[d.coluna] || ''}
+                         onChange={(e) => mudarFiltro({ datas: { ...filtros.datas, [d.coluna]: e.target.value } })} />
+                </div>
+              ))}
 
               <button className="btn ghost" disabled={!temFiltro(filtros)}
                       onClick={() => { setFiltros(FILTROS_VAZIOS); setMostrar(PASSO) }}>
@@ -207,8 +211,8 @@ export function Fila({ bases, carregandoBases }: { bases: BaseResumo[]; carregan
   )
 }
 
-export function LinhaFila({ c, temValor, aoAbrir }: {
-  c: ClienteFila; temValor: boolean; aoAbrir: () => void
+export function LinhaFila({ c, temValor, temScore = false, aoAbrir }: {
+  c: ClienteFila; temValor: boolean; temScore?: boolean; aoAbrir: () => void
 }) {
   const v = variacao(c)
   return (
@@ -221,6 +225,14 @@ export function LinhaFila({ c, temValor, aoAbrir }: {
         </div>
         <Faixa faixa={c.faixa_risco} />
       </td>
+      {temScore && (
+        <td>
+          <div className={'sc ' + c.faixa_risco}>
+            <b>{c.score != null ? Math.round(c.score) : '—'}</b>
+            <div className="sbar"><i style={{ width: `${Math.round(c.score ?? 0)}%` }} /></div>
+          </div>
+        </td>
+      )}
       <td>
         <b>{c.cliente_id}</b>
         <br />

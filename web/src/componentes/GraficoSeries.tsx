@@ -3,7 +3,7 @@
  * o gráfico tem de se explicar sozinho.
  */
 
-import type { Serie } from '../analise/exploratoria'
+import type { Serie } from '../api/tipos'
 import { nf, sg } from '../formato'
 
 const L = 960, A = 240

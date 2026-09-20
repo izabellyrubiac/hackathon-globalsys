@@ -12,9 +12,9 @@ import type { PaginaClientes, Validacao } from './api/tipos'
 import { GraficoSeries } from './componentes/GraficoSeries'
 import { Sparkline } from './componentes/Sparkline'
 import { LinhaFila } from './paginas/Fila'
+import { CamposPesosScore, PESOS_PADRAO } from './paginas/PopupPesos'
 import { GavetaCliente } from './paginas/GavetaCliente'
 import { ConteudoValidacao } from './paginas/Validacao'
-import { analisar } from './analise/exploratoria'
 
 const API = process.env.API || 'http://localhost:8000'
 let falhas = 0
@@ -56,6 +56,12 @@ async function main() {
   conferir('linha do primeiro da fila',
            <table><tbody><LinhaFila c={primeiro} temValor aoAbrir={() => {}} /></tbody></table>,
            [primeiro.cliente_id, '>1<', 'fx atencao', 'R$ ', '16%', primeiro.evidencias[0]!.titulo])
+
+  conferir('linha com a coluna de score',
+           <table><tbody><LinhaFila c={{ ...primeiro, score: 71.4 }} temValor temScore aoAbrir={() => {}} /></tbody></table>,
+           ['>71<', 'sbar'])
+  conferir('campos dos pesos do score', <CamposPesosScore valor={PESOS_PADRAO} aoMudar={() => {}} id="t" />,
+           ['Risco de cancelar (p1)', 'Valor mensal (p2)', 'Variação do risco', '60% · 30% · 10%'])
 
   // todas as linhas: é onde um campo nulo de um cliente qualquer apareceria
   conferir('as 58 linhas',
@@ -116,31 +122,6 @@ async function main() {
                                    antecedencia: 3, pontos }} />,
            ['Uso da plataforma (%)', 'separa desde o mês −3', 'Cancelaram', 'Continuam ativos',
             'meses até a saída', '<polygon'])
-
-  console.log('\nanálise exploratória sobre dados sintéticos')
-  const planilhas = {
-    clientes: [{ cliente_id: 'A', v: 1 }, { cliente_id: 'B', v: 1 }, { cliente_id: 'C', v: 1 }],
-    situacao: [{ cliente_id: 'A', mes_saida: '2026-05' }, { cliente_id: 'B', mes_saida: '' },
-               { cliente_id: 'C', mes_saida: '' }],
-    mensal: [] as Record<string, unknown>[],
-  }
-  for (const id of ['A', 'B', 'C']) {
-    for (let m = 0; m < 18; m++) {
-      const caindo = id === 'A' && m >= 12
-      planilhas.mensal.push({ cliente_id: id, mes_ref: `${2025 + (m > 11 ? 1 : 0)}-${String((m % 12) + 1).padStart(2, '0')}`,
-                              uso_pct: caindo ? 30 : 80 })
-    }
-  }
-  const a = analisar({ planilhas, colunaId: 'cliente_id', alvoTabela: 'situacao',
-                       colunaDataSaida: 'mes_saida' })
-  if ('erro' in a) { falhas++; console.log('  FALHA analisar: ' + a.erro) }
-  else {
-    const s = a.series[0]!
-    const ok = a.cancelados === 1 && a.ativos === 2 && s.coluna === 'uso_pct' && s.auc === 0
-    console.log(`  ${ok ? 'ok  ' : 'FALHA'} analisar: ${a.cancelados} cancelado, ${a.ativos} ativos, `
-                + `série "${s.coluna}", AUC ${s.auc}, separa desde ${s.antecedencia}`)
-    if (!ok) falhas++
-  }
 
   // O avaliador pode trazer uma base sem coluna de valor, sem NPS, com um cliente sem nenhum
   // sinal, ou treinada sem validação. Nenhum desses casos pode quebrar a tela.

@@ -12,6 +12,8 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from motor.config import MODELOS_VALIDOS, Config
+from motor.score import validar_pesos
+from motor.selecao import validar_pesos_colunas
 
 FAIXAS = ("alto", "atencao", "baixo")
 
@@ -103,6 +105,13 @@ class Opcoes(BaseModel):
     validar: bool | None = Field(None, description="Ligar/desligar a validação cruzada externa.")
     dobras: int | None = Field(None, ge=2, le=50, description="Dobras da validação externa (agrupadas por cliente).")
     semente: int | None = Field(None, ge=0)
+    pesos_colunas: dict[str, float] | None = Field(
+        None, description='Peso 0–1 por coluna ("tabela.coluna" ou "coluna"): escala a penalização na seleção da '
+                          'logística (1 = normal; 0 = a coluna sai). Nas árvores só o 0 vale. A seleção e a validação '
+                          'são refeitas com esses pesos.')
+    pesos_score: dict[str, float] | None = Field(
+        None, description="{risco, valor, delta}: ordena a fila por um score de 0 a 100 (média ponderada de risco, "
+                          "valor mensal e variação do risco). Sem isso, a ordem é a da perda anual ajustada.")
     avancado: dict[str, Any] = Field(default_factory=dict,
                                      description="Outros campos de `motor.Config` (lidos dinamicamente).")
 
@@ -113,6 +122,16 @@ class Opcoes(BaseModel):
             raise ValueError(f"Modelo '{v}' não existe. Use um de: {', '.join(MODELOS_VALIDOS)}.")
         return v
 
+    @field_validator("pesos_colunas")
+    @classmethod
+    def _pesos_colunas_validos(cls, v):
+        return validar_pesos_colunas(v) if v else None
+
+    @field_validator("pesos_score")
+    @classmethod
+    def _pesos_score_validos(cls, v):
+        return validar_pesos(v)
+
     @field_validator("avancado")
     @classmethod
     def _avancado_conhecido(cls, v: dict) -> dict:
@@ -122,6 +141,26 @@ class Opcoes(BaseModel):
             raise ValueError(f"Opção avançada desconhecida: {', '.join(extras)}. "
                              f"Campos aceitos: {', '.join(sorted(nomes))}.")
         return v
+
+
+class AtualizacaoExecucao(BaseModel):
+    """Corpo do PATCH de uma versão. Só o que vem no corpo muda; `pesos_score: null` (ou `{}`) volta à ordem padrão."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    rotulo: str | None = Field(None, max_length=80, description="Novo nome da versão (o `execucao_id` não muda).")
+    pesos_score: dict[str, float] | None = Field(
+        None, description="{risco, valor, delta}. Refaz `score` e `prioridade` do `clientes.json` sem treinar de novo.")
+
+    @field_validator("rotulo")
+    @classmethod
+    def _rotulo_aparado(cls, v):
+        return (v or "").strip() or None
+
+    @field_validator("pesos_score")
+    @classmethod
+    def _pesos_score_validos(cls, v):
+        return validar_pesos(v)
 
 
 class PedidoTreino(BaseModel):
@@ -163,7 +202,7 @@ class Status(Aberto):
     """Status derivado da base: o que está rodando, senão a execução ativa, senão a mais recente."""
 
     base_id: str
-    estado: str = Field(description='"inspecionada" | "na_fila" | "treinando" | "pronta" | "erro"')
+    estado: str = Field(description='"inspecionada" | "na_fila" | "treinando" | "pronta" | "erro" | "cancelada"')
     etapa: str | None = None
     fracao: float = 0.0
     mensagem: str | None = Field(None, description="Erro legível em pt-BR quando estado = 'erro'.")
@@ -185,7 +224,7 @@ class StatusExecucao(Aberto):
     base_id: str
     execucao_id: str
     rotulo: str | None = None
-    estado: str = Field(description='"na_fila" | "treinando" | "pronta" | "erro"')
+    estado: str = Field(description='"na_fila" | "treinando" | "pronta" | "erro" | "cancelada"')
     etapa: str | None = None
     fracao: float = 0.0
     mensagem: str | None = None
@@ -263,6 +302,7 @@ class PaginaClientes(Aberto):
     gerado_em: str | None = None
     mes_referencia: str | None = None
     modelo: dict[str, Any] | None = None
+    pesos_score: dict[str, float] | None = Field(None, description="Pesos do score que ordenam a fila (null = ordem padrão).")
     resumo: dict[str, Any] | None = None
     total: int = Field(0, description="Clientes ativos na fila.")
     total_filtrado: int = Field(0, description="Depois do filtro de faixa.")

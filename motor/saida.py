@@ -11,7 +11,10 @@ de treino) nas árvores. Contribuições são sempre aditivas em log-odds.
 clientes.json
 -------------
 gerado_em, mes_referencia ("AAAA-MM"; null no modo fotografia)
+pesos_score {risco, valor, delta} | null (a ordem da fila é por score quando presente)
 modelo      {nome, rotulo, tipo, horizonte_meses, cortes{alto, atencao}, formula_prioridade,
+             formula_prioridade_padrao (a ordem sem score, para `motor.score.reordenar(doc, None)`),
+             colunas_data [{coluna, rotulo}] (as chaves de `clientes[].datas`),
              coluna_valor {tabela, coluna} | null,
              variaveis [{id, rotulo, tabela, coluna, transformacao, coef (null nas árvores), importancia,
                          direcao, limiar}],
@@ -20,9 +23,13 @@ resumo      {clientes_ativos, em_risco (alto+atenção), em_risco_alto, em_atenc
              receita_em_risco_mensal, receita_risco_alto_mensal, perda_anual_esperada_total}
              (os três valores em R$ ficam null sem coluna de valor)
 clientes[]  (todos os ativos, na ordem da fila)
-  cliente_id, atributos {coluna categórica da tabela de clientes: valor}, valor_mensal (null sem valor),
+  cliente_id, atributos {coluna categórica da tabela de clientes: valor},
+  datas {coluna de data da tabela de clientes: "AAAA-MM" | null} (ex.: inicio_contrato; vira filtro na fila),
+  valor_mensal (null sem valor),
   situacao "Ativo", risco (probabilidade de cancelar nos próximos H meses), faixa_risco ("alto"|"atencao"|"baixo"),
-  prioridade (1..N, única e contínua; ordem = perda_anual_ajustada desc, sem valor = risco_ajustado desc),
+  prioridade (1..N, única e contínua; ordem = perda_anual_ajustada desc, sem valor = risco_ajustado desc; com
+              `pesos_score` a ordem é o `score` desc, empate por risco),
+  score (0–100, `motor/score.py`; null sem `pesos_score`),
   perda_anual_esperada (risco × valor_mensal × 12; null sem valor; é a perda real esperada, soma em `resumo`),
   delta_risco (risco de hoje − risco do mês anterior, mesmo modelo; null sem mês anterior pontuado; sempre enviado,
                mesmo com o delta fora do modelo), risco_ajustado (min(risco + máx(delta_risco, 0), 1); igual a
@@ -60,7 +67,7 @@ modelo{escolhido, rotulo, forcado, motivo, criterio, elegibilidade{min_pos_arvor
 regras{…}, resumo{n_candidatas, n_selecionadas, limite_variaveis, C_l1, C_l2, intercepto, metodo_selecao,
        retiradas_consistencia_dobras, n_arvores, calibracao{a, b} (árvores), …},
 variaveis[{id, rotulo, tabela, coluna, transformacao, categoria, selecionada, coef, odds_ratio, importancia,
-           auc_univariada, auc_treino, direcao, direcao_texto, frequencia_selecao (logística: rodadas da
+           auc_univariada, auc_treino, peso_usuario (0–1; 1 = padrão), direcao, direcao_texto, frequencia_selecao (logística: rodadas da
            stability selection; árvores: rodadas em que venceu a maior sombra), consistencia_sinal (null nas
            árvores), frequencia_dobras, limiar, nulos_pct, vazamento, motivo_descarte}]
 """
@@ -75,7 +82,9 @@ import numpy as np
 import pandas as pd
 
 from .modelos_previsao.base import MODELOS
-from .util import fmt_num
+from .score import formula as formula_score, validar_pesos
+from .selecao import peso_da_coluna
+from .util import fmt_num, rotulo_legivel
 
 NOME_METODO = {
     "melhor_variavel": "Melhor variável sozinha (limiar de Youden)",
@@ -222,13 +231,16 @@ def clientes_json(r, gerado: str) -> dict:
                     valores[s["chave"]] = (limpo(x, 2) if s["tipo"] == "numerica" else (None if x is None or pd.isna(x) else str(x)))
                 h.append({"mes_ref": str(mes), "risco": limpo(pf, 4), "valores": valores})
         attrs = {c: (None if pd.isna(x) else str(x)) for c, x in r.base.atributos.loc[cid].items()}
+        datas = ({c: (None if pd.isna(x) else str(x)) for c, x in r.base.datas.loc[cid].items()}
+                 if r.base.datas is not None else {})
         lista.append({
-            "cliente_id": cid, "atributos": attrs,
+            "cliente_id": cid, "atributos": attrs, "datas": datas,
             "valor_mensal": limpo(f["valor_mensal"], 2) if tem_valor else None,
             "situacao": "Ativo", "risco": round(float(f["probabilidade"]), 4), "faixa_risco": str(f["faixa_risco"]),
             "prioridade": int(f["prioridade"]),
             "perda_anual_esperada": limpo(f["perda_anual_esperada"], 2) if tem_valor else None,
             "delta_risco": limpo(f["delta_risco"], 4), "risco_ajustado": limpo(f["risco_ajustado"], 4),
+            "score": limpo(f["score"], 1),
             "perda_anual_ajustada": limpo(f["perda_anual_ajustada"], 2) if tem_valor else None,
             "meses_em_alerta": int(f["meses_em_alerta"]),
             "evidencias": [_item(x, meta, chaves, h) for x in e[e["dispara"]].itertuples()],
@@ -256,10 +268,14 @@ def clientes_json(r, gerado: str) -> dict:
             "tipo": TIPO_MODELO[r.modelo.nome],
             "horizonte_meses": int(m.horizonte_meses),
             "cortes": {"alto": r.cortes["alto"], "atencao": r.cortes["atencao"]},
-            "formula_prioridade": _formula_prioridade(tem_valor, r.config.delta_na_fila),
+            "formula_prioridade": (formula_score(validar_pesos(r.config.pesos_score), tem_valor) if r.config.pesos_score
+                                   else _formula_prioridade(tem_valor, r.config.delta_na_fila)),
+            "formula_prioridade_padrao": _formula_prioridade(tem_valor, r.config.delta_na_fila),
             "coluna_valor": {"tabela": m.valor_tabela or m.tabela_clientes, "coluna": m.coluna_valor} if tem_valor else None,
             "variaveis": variaveis,
             "series_historico": series,
+            "colunas_data": [{"coluna": c, "rotulo": r.base.rotulos.get(c) or rotulo_legivel(c)}
+                             for c in (r.base.datas.columns if r.base.datas is not None else [])],
         },
         "resumo": {
             "clientes_ativos": len(F), "em_risco": len(em), "em_risco_alto": len(alto),
@@ -267,6 +283,7 @@ def clientes_json(r, gerado: str) -> dict:
             "receita_em_risco_mensal": soma(em["valor_mensal"]), "receita_risco_alto_mensal": soma(alto["valor_mensal"]),
             "perda_anual_esperada_total": soma(F["perda_anual_esperada"]),
         },
+        "pesos_score": validar_pesos(r.config.pesos_score),
         "clientes": lista,
     })
 
@@ -382,6 +399,7 @@ def pesos_json(r, gerado: str) -> dict:
             (0.0 if r.oof is not None else None),
             "limiar": r.modelo.limiares.get(vid), "nulos_pct": x.get("nulos_pct"),
             "vazamento": bool(x.get("vazamento")), "motivo_descarte": None if sel else (x.get("motivo") or "retirada"),
+            "peso_usuario": peso_da_coluna(v.tabela, v.coluna, cfg),
         })
     def num(v):
         return 0.0 if v is None or (isinstance(v, float) and math.isnan(v)) else float(v)
@@ -411,6 +429,10 @@ def pesos_json(r, gerado: str) -> dict:
                               "com C por validação agrupada; selecionada se escolhida em ≥ "
                               f"{fmt_num(100 * cfg.limiar_frequencia, 0)}% das rodadas com o mesmo sinal em ≥ "
                               f"{fmt_num(100 * cfg.consistencia_sinal, 0)}% delas e sinal igual à direção univariada")),
+            "pesos_manuais": ("pesos por coluna definidos pelo usuário: escalam a penalização da seleção da logística "
+                              "(1 = normal, 0 = a coluna sai) e a seleção é refeita com eles em cada dobra da validação, "
+                              "então as métricas continuam sem otimismo pela escolha das variáveis"
+                              if cfg.pesos_colunas else None),
             "consistencia_dobras": ((f"modelo final: variáveis selecionadas em ≥ {fmt_num(100 * cfg.min_frac_dobras, 0)}% "
                                      "das dobras externas da validação têm prioridade no limite; "
                                      + ("as demais só entram se sobrar vaga" if cfg.modo_dobras == "priorizar"

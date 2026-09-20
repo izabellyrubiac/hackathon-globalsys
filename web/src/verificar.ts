@@ -10,7 +10,6 @@
  *     npm run verificar
  */
 
-import { auc, antecedencia, mesIdx, quartis, rotuloSerie, type Ponto } from './analise/exploratoria.ts'
 import { aplicarFiltros, atributosDisponiveis, variacao, FILTROS_VAZIOS } from './dominio.ts'
 import { brl, dataHora, mesFmt, pc, recuarMes, sg } from './formato.ts'
 import type { ClienteFila, PaginaClientes, Validacao } from './api/tipos.ts'
@@ -42,26 +41,6 @@ async function main() {
   conferir('recuarMes', recuarMes('2026-06', 3), '2026-03')
   conferir('recuarMes virando o ano', recuarMes('2026-01', 2), '2025-11')
 
-  console.log('\nestatística da análise exploratória')
-  conferir('auc separação total', auc([3, 4, 5], [0, 1, 2]), 1)
-  conferir('auc invertida', auc([0, 1], [2, 3]), 0)
-  // postos 1 · 2,5 · 2,5 · 4 → soma dos positivos 3,5 → U = 0,5 → AUC = 0,5/4
-  conferir('auc com empate', auc([1, 2], [2, 3]), 0.125)
-  conferir('quartis', quartis([1, 2, 3, 4, 5]), { med: 3, p25: 2, p75: 4, n: 5 })
-  conferir('mesIdx AAAA-MM', mesIdx('2026-06'), 2026 * 12 + 5)
-  conferir('mesIdx MM/AAAA', mesIdx('06/2026'), 2026 * 12 + 5)
-  conferir('mesIdx inválido', mesIdx('nada'), null)
-  conferir('rotuloSerie pct', rotuloSerie('pct_sla_cumprido'), 'SLA cumprido (%)')
-  conferir('rotuloSerie horas', rotuloSerie('tempo_medio_resolucao_h'), 'Tempo médio resolução (h)')
-
-  // separa a partir do mês −2: a mediana de quem saiu fica fora da faixa dos ativos em −1 e −2
-  const faixa = { med: 50, p25: 40, p75: 60, n: 10 }
-  const pontos: Ponto[] = Array.from({ length: 12 }, (_, i) => {
-    const rel = i - 12
-    return { rel, a: faixa, c: rel >= -2 ? { med: 90, p25: 80, p75: 95, n: 5 } : faixa }
-  })
-  conferir('antecedencia', antecedencia(pontos), 2)
-
   console.log('\nfila real da API')
   const fila = await pegar<PaginaClientes>('/api/bases/inovaapps/clientes?limite=5000&incluir_historico=false')
   const cs = fila.clientes
@@ -79,6 +58,14 @@ async function main() {
            emRisco.map((c) => c.prioridade),
            [...emRisco].sort((a, b) => a.prioridade - b.prioridade).map((c) => c.prioridade))
   conferir('busca por id', aplicarFiltros(cs, { ...FILTROS_VAZIOS, busca: 'c071' }).length, 1)
+  // filtro "contrato iniciado desde": cliente sem a data ou anterior ao mês pedido sai da lista
+  const comData = [
+    { ...cs[0]!, datas: { inicio_contrato: '2024-05' } }, { ...cs[1]!, datas: { inicio_contrato: '2022-11' } },
+    { ...cs[2]!, datas: { inicio_contrato: null } }, { ...cs[3]! },
+  ]
+  conferir('filtro por início de contrato',
+           aplicarFiltros(comData, { ...FILTROS_VAZIOS, datas: { inicio_contrato: '2023-01' } }).map((c) => c.cliente_id),
+           [cs[0]!.cliente_id])
 
   const soma = cs.reduce((s, c) => s + (c.perda_anual_esperada ?? 0), 0)
   conferir('perda anual soma o resumo',

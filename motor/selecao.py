@@ -164,6 +164,35 @@ def _paralelo(n_jobs: int) -> Parallel:
     return Parallel(n_jobs=n_jobs, prefer="threads")
 
 
+def validar_pesos_colunas(pesos) -> dict[str, float]:
+    """Pesos por coluna do usuário: {"tabela.coluna" | "coluna": 0–1}. ValueError em pt-BR."""
+    out = {}
+    for k, v in (pesos or {}).items():
+        try:
+            f = float(v)
+        except (TypeError, ValueError):
+            raise ValueError(f"O peso de '{k}' precisa ser um número entre 0 e 1.") from None
+        if not (0.0 <= f <= 1.0):
+            raise ValueError(f"O peso de '{k}' precisa estar entre 0 e 1 (recebi {v}).")
+        out[str(k)] = f
+    return out
+
+
+def peso_da_coluna(tabela: str, coluna: str, cfg: Config) -> float:
+    """Peso 0–1 dado pelo usuário à coluna (1 = normal, 0 = ignorar). `tabela.coluna` vence `coluna`."""
+    p = cfg.pesos_colunas or {}
+    for chave in (f"{tabela}.{coluna}", coluna):
+        if chave in p:
+            return float(p[chave])
+    return 1.0
+
+
+def peso_da_variavel(vid: str, meta: dict, specs: dict, cfg: Config) -> float:
+    """Peso da variável `vid`; a persistência herda o da coluna da variável-base."""
+    v = meta.get(vid) or (meta.get(specs[vid]["base"]) if vid in specs else None)
+    return 1.0 if v is None else peso_da_coluna(v.tabela, v.coluna, cfg)
+
+
 def _auc_C(Z, y, tr, te, C, cfg) -> float:
     lr = _esparsa(C, cfg).fit(Z[tr], y[tr])
     return auc(y[te], lr.decision_function(Z[te]))
@@ -251,7 +280,9 @@ def pre_selecao(X: pd.DataFrame, grade: pd.DataFrame, meta: dict, treino: pd.Ser
         nunicos = sub.nunique()
         ok = []
         for c in cols:
-            if nulos[c] > cfg.max_nulos:
+            if c in meta and peso_da_coluna(meta[c].tabela, meta[c].coluna, cfg) == 0:
+                rel.at[c, "motivo"] = "peso 0 definido pelo usuário"
+            elif nulos[c] > cfg.max_nulos:
                 rel.at[c, "motivo"] = f"muitos nulos ({100 * nulos[c]:.0f}% das linhas de treino)"
             elif nunicos[c] <= 1:
                 rel.at[c, "motivo"] = "constante nas linhas de treino"
@@ -402,8 +433,10 @@ def aplicar_limite(rel: pd.DataFrame, elegiveis: list[str], cols: list[str], lim
 
 
 # --------------------------------------------------------------------------- seleção (logística)
-def _coef_rodada(Zb: np.ndarray, yb: np.ndarray, C: float, cfg: Config) -> np.ndarray:
+def _coef_rodada(Zb: np.ndarray, yb: np.ndarray, C: float, cfg: Config, w: np.ndarray | None = None) -> np.ndarray:
     Zb = (Zb - Zb.mean(axis=0)) / _desvio(Zb)
+    if w is not None:
+        Zb = Zb * w            # peso do usuário: escala da penalização (menor peso = coeficiente mais caro)
     return _esparsa(C, cfg).fit(Zb, yb).coef_[0]
 
 
@@ -426,14 +459,15 @@ def selecionar(X: pd.DataFrame, grade: pd.DataFrame, meta: dict, treino: pd.Seri
     med = T[cols].median()
     A = imputar(T[cols], med)
     Z = padronizar(A, A.mean(axis=0), _desvio(A))
-    C = _escolher_C_l1(Z, y, grupos, cfg, n_jobs)
+    w = np.array([peso_da_variavel(c, meta, pre.persistencias, cfg) for c in cols])
+    C = _escolher_C_l1(Z * w, y, grupos, cfg, n_jobs)
     cli_unicos = np.array(sorted(set(grupos)))
     canc_cli = pd.Series(y, index=grupos).groupby(level=0).max().reindex(cli_unicos).to_numpy().astype(bool)
     escolhas = np.zeros((cfg.rodadas, len(cols)))
     sinais = np.zeros((cfg.rodadas, len(cols)))
     mascaras = [np.isin(grupos, amostrar_clientes(rng, cli_unicos, canc_cli, cfg)) for _ in range(cfg.rodadas)]
     rodadas = [(b, m) for b, m in enumerate(mascaras) if y[m].sum() > 0]
-    coefs = _paralelo(n_jobs)(delayed(_coef_rodada)(Z[m], y[m], C, cfg) for _, m in rodadas)
+    coefs = _paralelo(n_jobs)(delayed(_coef_rodada)(Z[m], y[m], C, cfg, w) for _, m in rodadas)
     for (b, _), co in zip(rodadas, coefs):
         escolhas[b] = co != 0
         sinais[b] = np.sign(co)

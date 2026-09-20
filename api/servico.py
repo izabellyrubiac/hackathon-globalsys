@@ -12,8 +12,11 @@ import traceback
 from dataclasses import fields
 from pathlib import Path
 
-from motor import ErroMapeamento, Mapeamento, Tabelas, inspecionar, ler_arquivos, treinar
+from motor import ErroMapeamento, Mapeamento, Tabelas, TreinoCancelado, inspecionar, ler_arquivos, treinar
+from motor import exploratoria
 from motor.config import Config
+from motor.painel import preparar
+from motor.score import reordenar
 
 from . import armazenamento as arm
 from .ajustes import limite_validacao_sincrona_bytes, max_treinos_simultaneos
@@ -29,6 +32,7 @@ _fila: list[tuple[str, str]] = []
 _rodando: set[tuple[str, str]] = set()
 _threads: dict[tuple[str, str], threading.Thread] = {}
 _fila_lock = threading.Lock()
+_cancelamentos: dict[tuple[str, str], threading.Event] = {}     # treino em andamento → sinal de cancelamento
 
 
 def _assinatura(caminhos: list[Path]) -> tuple:
@@ -126,7 +130,8 @@ def montar_config(op: Opcoes) -> Config:
     campos = {f.name for f in fields(Config)}
     padrao = Config()
     diretos = {"modelo": op.modelo, "min_hist": op.min_hist, "delta_risco": op.delta_risco,
-               "validar": op.validar, "dobras": op.dobras, "semente": op.semente}
+               "validar": op.validar, "dobras": op.dobras, "semente": op.semente,
+               "pesos_colunas": op.pesos_colunas, "pesos_score": op.pesos_score}
     valores = {k: v for k, v in diretos.items() if v is not None and k in campos}
     problemas: list[str] = []
     for k, v in (op.avancado or {}).items():
@@ -144,6 +149,15 @@ def montar_config(op: Opcoes) -> Config:
     if problemas:
         raise ErroMapeamento(problemas)
     return Config(**valores)
+
+
+# --------------------------------------------------------------------------- análise exploratória
+def analisar_base(base_id: str, m: Mapeamento) -> dict:
+    """Cancelados × ativos, métrica a métrica, nos meses antes da saída (`motor/exploratoria.py`).
+    Levanta `ErroMapeamento` (422) se o mapeamento não permite comparar."""
+    tabelas = ler_tabelas(base_id)
+    m.validar(tabelas)
+    return exploratoria.analisar(preparar(tabelas, m, Config()))
 
 
 # --------------------------------------------------------------------------- treino
@@ -171,7 +185,8 @@ def _treinar(base_id: str, eid: str) -> None:
         m = Mapeamento.from_dict(arm.ler_json(destino / "mapeamento.json") or {})
         cfg = Config(**(arm.ler_json(destino / "config.json") or {}))
         tabelas = ler_tabelas(base_id)
-        r = treinar(tabelas, m, progresso=_progresso(base_id, eid, inicio), config=cfg)
+        r = treinar(tabelas, m, progresso=_progresso(base_id, eid, inicio), config=cfg,
+                    cancelar=_cancelamentos.setdefault((base_id, eid), threading.Event()))
         r.salvar(destino)
         st = arm.escrever_status_execucao(
             base_id, eid, estado="pronta", etapa="concluído", fracao=1.0, problemas=[], mensagem=None,
@@ -179,6 +194,10 @@ def _treinar(base_id: str, eid: str) -> None:
             concluido_em=arm.agora(), segundos=round(time.monotonic() - inicio, 1), pid=None, mono=None)
         arm.gravar_json(destino / "resumo.json", montar_resumo(r.clientes, r.validacao, r.pesos, st))
         arm.ativar_se_primeira(base_id)
+    except TreinoCancelado:
+        arm.escrever_status_execucao(base_id, eid, estado="cancelada", etapa="cancelada", pid=None, mono=None,
+                                     mensagem="Treino cancelado pelo usuário.", concluido_em=arm.agora(),
+                                     segundos=round(time.monotonic() - inicio, 1))
     except ErroMapeamento as e:
         arm.escrever_status_execucao(base_id, eid, estado="erro", etapa="mapeamento inválido",
                                      problemas=list(e.problemas), concluido_em=arm.agora(),
@@ -199,6 +218,7 @@ def _rodar(base_id: str, eid: str) -> None:
     finally:
         with _fila_lock:
             _rodando.discard((base_id, eid))
+            _cancelamentos.pop((base_id, eid), None)
         _bombear()
 
 
@@ -228,6 +248,61 @@ def disparar_treino(base_id: str, m: Mapeamento, cfg: Config, opcoes: dict,
     arm.escrever_status_execucao(base_id, eid, etapa=f"na fila (posição {posicao})")
     _bombear()
     return arm.item_execucao(base_id, eid)          # status público (sem pid/mono) + resumo + ativa
+
+
+_NADA = object()
+
+
+def atualizar_execucao(base_id: str, execucao_id: str, rotulo=_NADA, pesos_score=_NADA) -> dict:
+    """PATCH de uma versão: renomeia (só o `rotulo`) e/ou refaz a ordem da fila por outros `pesos_score`.
+
+    A ordem é recalculada sobre o `clientes.json` pronto (`motor.score.reordenar`): não treina de novo. Os pesos só
+    valem para versão `pronta` (409 nas demais)."""
+    destino = arm.pasta_execucao(base_id, execucao_id)
+    st = arm.ler_status_execucao(base_id, execucao_id)
+    if pesos_score is not _NADA:
+        if st.get("estado") != "pronta":
+            raise arm.ErroArmazenamento("Os pesos do score só mudam numa versão pronta.", 409)
+        clientes = arm.ler_json(destino / "clientes.json")
+        if not clientes:
+            raise arm.ErroArmazenamento("Os resultados desta versão sumiram do disco. Treine de novo.", 404)
+        arm.gravar_json(destino / "clientes.json", reordenar(clientes, pesos_score))
+        cfg = arm.ler_json(destino / "config.json") or {}
+        arm.gravar_json(destino / "config.json", {**cfg, "pesos_score": pesos_score or None})
+        arm.escrever_status_execucao(base_id, execucao_id, opcoes={**(st.get("opcoes") or {}),
+                                                                    "pesos_score": pesos_score or None})
+    if rotulo is not _NADA:
+        arm.escrever_status_execucao(base_id, execucao_id, rotulo=rotulo)
+    if st.get("estado") == "pronta":            # o resumo guarda o rótulo (e a ordem do topo da fila)
+        st = arm.ler_status_execucao(base_id, execucao_id)
+        arm.gravar_json(destino / "resumo.json",
+                        montar_resumo(arm.ler_json(destino / "clientes.json") or {},
+                                      arm.ler_json(destino / "validacao.json") or {},
+                                      arm.ler_json(destino / "pesos.json") or {}, st))
+    return arm.item_execucao(base_id, execucao_id)
+
+
+def cancelar_treino(base_id: str, execucao_id: str) -> dict:
+    """Cancela uma execução na fila (sai da fila na hora) ou em treino (o motor para na próxima etapa/dobra).
+
+    ErroArmazenamento 409 se ela já terminou."""
+    chave = (base_id, execucao_id)
+    st = arm.ler_status_execucao(base_id, execucao_id)
+    with _fila_lock:
+        if chave in _fila:
+            _fila.remove(chave)
+            arm.escrever_status_execucao(base_id, execucao_id, estado="cancelada", etapa="cancelada", pid=None,
+                                         mensagem="Treino cancelado pelo usuário.", concluido_em=arm.agora())
+        elif chave in _rodando:
+            _cancelamentos.setdefault(chave, threading.Event()).set()
+            arm.escrever_status_execucao(base_id, execucao_id, etapa="cancelando…")
+        elif st.get("estado") in arm.ATIVAS:
+            raise arm.ErroArmazenamento("Esta execução não está sendo treinada por este processo; "
+                                        "não há como cancelá-la.", 409)
+        else:
+            raise arm.ErroArmazenamento(f"Esta execução já terminou (estado: {st.get('estado')}); "
+                                        "não há treino para cancelar.", 409)
+    return arm.item_execucao(base_id, execucao_id)
 
 
 def esperar_treino(base_id: str, execucao_id: str | None = None, segundos: float = 600.0) -> None:

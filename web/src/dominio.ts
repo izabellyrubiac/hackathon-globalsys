@@ -2,7 +2,7 @@
  * API devolve (`prioridade`, do motor), e filtrar nunca a refaz.
  */
 
-import type { ClienteFila, Evidencia, Execucao, BaseResumo, Faixa } from './api/tipos.ts'
+import type { ClienteFila, Evidencia, Execucao, BaseResumo, Faixa, PesosScore } from './api/tipos.ts'
 import { norm, recuarMes } from './formato.ts'
 
 // --------------------------------------------------------------------------- variação de risco
@@ -72,9 +72,11 @@ export interface Filtros {
   faixa: Faixa | ''
   atributos: Record<string, string>
   valorMinimo: string
+  /** Coluna de data → mês mínimo (AAAA-MM): "contrato iniciado desde". */
+  datas: Record<string, string>
 }
 
-export const FILTROS_VAZIOS: Filtros = { busca: '', faixa: '', atributos: {}, valorMinimo: '' }
+export const FILTROS_VAZIOS: Filtros = { busca: '', faixa: '', atributos: {}, valorMinimo: '', datas: {} }
 
 /** Filtra preservando a ordem de chegada — que é a ordem da fila do motor. */
 export function aplicarFiltros(clientes: ClienteFila[], f: Filtros): ClienteFila[] {
@@ -86,6 +88,9 @@ export function aplicarFiltros(clientes: ClienteFila[], f: Filtros): ClienteFila
     for (const [k, v] of Object.entries(f.atributos)) {
       if (v && String(c.atributos?.[k] ?? '') !== v) return false
     }
+    for (const [k, v] of Object.entries(f.datas)) {
+      if (v && (c.datas?.[k] ?? '') < v) return false          // sem data ou anterior ao mês pedido
+    }
     if (min != null && !Number.isNaN(min) && min > 0) {
       if (c.valor_mensal == null || c.valor_mensal < min) return false
     }
@@ -95,6 +100,7 @@ export function aplicarFiltros(clientes: ClienteFila[], f: Filtros): ClienteFila
 
 export const temFiltro = (f: Filtros): boolean =>
   Boolean(f.busca || f.faixa || f.valorMinimo) || Object.values(f.atributos).some(Boolean)
+  || Object.values(f.datas).some(Boolean)
 
 // --------------------------------------------------------------------------- alerta e evidências
 /** "em alerta há 3 meses" e, no título, desde quando. */
@@ -136,6 +142,8 @@ export interface LinhaVersao {
   alarme_hoje: number | null
   cancelados_pegos: string | null
   n_clientes: number | null
+  /** Pesos do score que ordenam a fila desta versão; null = ordem padrão (perda anual ajustada). */
+  pesos_score: PesosScore | null
 }
 
 export function achatarExecucoes(
@@ -168,6 +176,7 @@ export function achatarExecucoes(
         antecedencia: d?.antecedencia_mediana_alto ?? null,
         alarme_hoje: r?.alarme_falso?.alto?.hoje ?? null,
         cancelados_pegos: d ? `${d.alto.k1} de ${d.n_cancelados}` : null,
+        pesos_score: (e.opcoes?.pesos_score as PesosScore | null | undefined) ?? null,
         n_clientes: e.n_clientes,
       })
     }

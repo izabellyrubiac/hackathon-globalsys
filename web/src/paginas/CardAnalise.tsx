@@ -1,37 +1,43 @@
-/** "Analisar dados": uma olhada nos dados crus antes de treinar, calculada no navegador.
+/** "Analisar dados": uma olhada nos dados antes de treinar, calculada no servidor (`POST /api/bases/{id}/analise`).
  *
- * Só funciona sobre a planilha que o usuário enviou nesta sessão. Numa base de demonstração —
- * que já estava no servidor e nunca passou por este navegador — não há arquivo para ler, e o
- * botão fica desativado com o motivo. Ver PENDENCIAS-MOTOR.md.
+ * Funciona em qualquer base guardada — enviada agora, de demonstração ou aberta depois de recarregar a página —,
+ * porque quem lê os dados é a API. É exploratória: a medida validada por cliente está na aba Validação.
  */
 
-import { useState } from 'react'
-import { analisar, type Analise } from '../analise/exploratoria'
-import type { Planilhas } from '../analise/planilha'
-import { Desativado } from '../componentes/Faixa'
+import { useEffect, useState } from 'react'
+import * as api from '../api/cliente'
+import { ErroApi } from '../api/cliente'
+import type { Analise, Mapeamento } from '../api/tipos'
+import { CaixaErro } from '../componentes/Estados'
 import { GraficoSeries } from '../componentes/GraficoSeries'
-import { PENDENCIAS } from '../desativado'
 import { mesFmt } from '../formato'
 
-export function CardAnalise({ planilhas, colunaId, alvoTabela, colunaDataSaida, pronto }: {
-  planilhas: Planilhas | null
-  colunaId: string
-  alvoTabela: string
-  colunaDataSaida: string | null
+export function CardAnalise({ baseId, mapeamento, pronto }: {
+  baseId: string
+  /** Mapeamento do formulário; só vale quando `pronto`. */
+  mapeamento: Mapeamento
   pronto: boolean
 }) {
   const [analise, setAnalise] = useState<Analise | null>(null)
+  const [erro, setErro] = useState<ErroApi | null>(null)
+  const [calculando, setCalculando] = useState(false)
 
-  const botao = (
-    <button
-      className="btn"
-      disabled={!pronto || !planilhas}
-      title={pronto ? undefined : 'Escolha a tabela de clientes, o identificador e a coluna de cancelamento.'}
-      onClick={() => setAnalise(analisar({ planilhas: planilhas!, colunaId, alvoTabela, colunaDataSaida }))}
-    >
-      Analisar dados
-    </button>
-  )
+  // Outra base ou outro mapeamento: o resultado antigo deixou de valer.
+  const chave = baseId + JSON.stringify(mapeamento)
+  useEffect(() => { setAnalise(null); setErro(null) }, [chave])
+
+  async function analisar() {
+    setCalculando(true)
+    setErro(null)
+    try {
+      setAnalise(await api.analisarBase(baseId, mapeamento))
+    } catch (e) {
+      setAnalise(null)
+      setErro(e instanceof ErroApi ? e : new ErroApi(0, String(e)))
+    } finally {
+      setCalculando(false)
+    }
+  }
 
   return (
     <div className="card">
@@ -41,22 +47,19 @@ export function CardAnalise({ planilhas, colunaId, alvoTabela, colunaDataSaida, 
         olhada exploratória: a medida validada por cliente está na aba Validação.
       </p>
 
-      {!planilhas ? (
-        <Desativado pendencia={PENDENCIAS.analiseSemArquivo}>{botao}</Desativado>
-      ) : (
-        <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
-          {botao}
-          {analise && (
-            <button className="btn ghost" onClick={() => setAnalise(null)}>Ocultar</button>
-          )}
-        </div>
-      )}
+      <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+        <button
+          className="btn" disabled={!pronto || calculando} onClick={analisar}
+          title={pronto ? undefined : 'Escolha a tabela de clientes, o identificador e a coluna de cancelamento.'}
+        >
+          {calculando ? 'Analisando…' : 'Analisar dados'}
+        </button>
+        {analise && <button className="btn ghost" onClick={() => setAnalise(null)}>Ocultar</button>}
+      </div>
 
-      {analise && 'erro' in analise && (
-        <div className="aviso erro" role="alert" style={{ marginTop: 14 }}>{analise.erro}</div>
-      )}
+      <CaixaErro erro={erro} titulo="Não consegui analisar." />
 
-      {analise && 'series' in analise && (
+      {analise && (
         <>
           <p className="mut" style={{ margin: '16px 0 4px', fontSize: 13 }}>
             {analise.cancelados} clientes que saíram contra {analise.ativos} que continuam, com a

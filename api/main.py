@@ -21,7 +21,7 @@ from motor.leitura import EXT_EXCEL
 
 from . import VERSAO, armazenamento as arm, demo, servico
 from .ajustes import ORIGENS_PERMITIDAS, PEDACO_BYTES, max_arquivos, max_upload_bytes
-from .modelos import (FAIXAS, BaseCriada, BaseDetalhe, BaseResumo, Comparacao, Execucao, Inspecao,
+from .modelos import (FAIXAS, AtualizacaoExecucao, BaseCriada, MapeamentoEntrada, BaseDetalhe, BaseResumo, Comparacao, Execucao, Inspecao,
                       ListaExecucoes, PaginaClientes, PedidoTreino, Saude, Status, TreinoAceito)
 from .resumo import comparar
 
@@ -220,10 +220,26 @@ def treinar_base(base_id: str, pedido: PedidoTreino):
         raise _erro(COD_422, "Mapeamento inválido.", problemas)
     opcoes = {"modelo": cfg.modelo, "horizonte_meses": int(m.horizonte_meses), "min_hist": cfg.min_hist,
               "delta_risco": bool(cfg.delta_risco), "validar": cfg.validar, "dobras": cfg.dobras,
-              "semente": cfg.semente}
+              "semente": cfg.semente, "pesos_colunas": cfg.pesos_colunas or None, "pesos_score": cfg.pesos_score}
     st = servico.disparar_treino(base_id, m, cfg, opcoes, (pedido.rotulo or "").strip() or None)
     return {"base_id": base_id, "execucao_id": st["execucao_id"], "execucao": st,
             "status": _status(base_id), "avisos": avisos}
+
+
+@app.post("/api/bases/{base_id}/analise", tags=["treino"],
+          summary="Análise exploratória: cancelados × ativos, métrica a métrica, nos meses antes da saída")
+async def analisar_base(base_id: str, mapeamento: MapeamentoEntrada):
+    """Botão "Analisar dados": funciona em qualquer base guardada (não depende do arquivo estar no navegador nem
+    de modelo treinado). Recebe o mesmo mapeamento do treino (só precisa da tabela de clientes, do identificador
+    e da coluna com o mês da saída) e devolve `series` (uma por métrica mensal, das que mais separam os grupos
+    para as que menos separam; mediana e P25–P75 por mês relativo), `cancelados`, `ativos` e `referencia`.
+    422 com a lista de problemas em pt-BR se não dá para comparar (contrato em `motor/exploratoria.py`)."""
+    arm.exigir(base_id)
+    m = Mapeamento.from_dict(mapeamento.model_dump())
+    try:
+        return await run_in_threadpool(servico.analisar_base, base_id, m)
+    except ErroMapeamento as e:
+        raise _erro(COD_422, "Não dá para analisar com este mapeamento.", list(e.problemas)) from e
 
 
 @app.get("/api/bases/{base_id}/status", response_model=Status, tags=["treino"],
@@ -261,6 +277,28 @@ def ativar_execucao(base_id: str, execucao_id: str):
     arm.exigir_execucao(base_id, execucao_id)
     arm.ativar(base_id, execucao_id)
     return arm.item_execucao(base_id, execucao_id)
+
+
+@app.patch("/api/bases/{base_id}/execucoes/{execucao_id}", response_model=Execucao, tags=["execuções"],
+           summary="Renomear uma versão e/ou mudar os pesos do score da fila")
+def atualizar_execucao(base_id: str, execucao_id: str, pedido: AtualizacaoExecucao):
+    """Só o que vier no corpo muda. `rotulo` troca o nome (o `execucao_id` continua o mesmo). `pesos_score`
+    ({risco, valor, delta}) refaz `score`, `prioridade` e a fórmula do `clientes.json` **sem treinar de novo**;
+    `pesos_score: null` volta à ordem padrão (perda anual ajustada). Pesos só em versão `pronta` (409)."""
+    arm.exigir_execucao(base_id, execucao_id)
+    campos = {k: getattr(pedido, k) for k in pedido.model_fields_set}
+    if not campos:
+        raise _erro(400, "Envie ao menos um campo para mudar: rotulo ou pesos_score.")
+    return servico.atualizar_execucao(base_id, execucao_id, **campos)
+
+
+@app.post("/api/bases/{base_id}/execucoes/{execucao_id}/cancelar", response_model=Execucao,
+          status_code=http.HTTP_202_ACCEPTED, tags=["execuções"], summary="Cancelar um treino na fila ou em andamento")
+def cancelar_execucao(base_id: str, execucao_id: str):
+    """Na fila: sai da fila e vira `cancelada` na hora. Treinando: o motor confere o sinal a cada etapa e a cada
+    dobra da validação, então a parada leva alguns segundos (a etapa vira "cancelando…" até lá). 409 se já terminou."""
+    arm.exigir_execucao(base_id, execucao_id)
+    return servico.cancelar_treino(base_id, execucao_id)
 
 
 @app.delete("/api/bases/{base_id}/execucoes/{execucao_id}", status_code=http.HTTP_204_NO_CONTENT,
@@ -322,7 +360,7 @@ def _clientes(base_id: str, execucao_id: str, limite: int, desde: int,
         pagina = [{k: v for k, v in c.items() if k != "historico"} for c in pagina]
     return {"base_id": base_id, "execucao_id": execucao_id, "gerado_em": doc.get("gerado_em"),
             "mes_referencia": doc.get("mes_referencia"), "modelo": doc.get("modelo"),
-            "resumo": doc.get("resumo"), "total": len(fila), "total_filtrado": len(filtrada),
+            "pesos_score": doc.get("pesos_score"), "resumo": doc.get("resumo"), "total": len(fila), "total_filtrado": len(filtrada),
             "desde": desde, "limite": limite, "clientes": pagina}
 
 

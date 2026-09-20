@@ -7,6 +7,8 @@ O sistema recebe **qualquer base** com uma tabela de clientes e tabelas de valor
 descobre sozinho quais sinais antecedem o cancelamento, treina um modelo, e devolve uma **fila de
 atendimento explicada**: o risco de cada cliente, as variáveis que estão disparando e a ação sugerida.
 
+Para instalar e subir na sua máquina: **[docs/rodar-local.md](docs/rodar-local.md)**.
+
 ## Como está organizado
 
 | Pasta | O que é |
@@ -19,6 +21,7 @@ atendimento explicada**: o risco de cada cliente, as variáveis que estão dispa
 | `api/` | API FastAPI: enviar base, mapear, treinar, comparar versões e servir a fila. |
 | `web/` | O app: React + Vite + TypeScript. Três telas — Modelos, Fila e Validação — falando com a API. |
 | `tests/` | Testes do motor. Os da API ficam em `api/tests/`. |
+| `docs/` | Documentação do projeto. Por ora, como instalar e rodar localmente. |
 
 Ambiente Python com **uv**. Não há banco de dados: bases e resultados são arquivos.
 
@@ -119,20 +122,29 @@ como avançada. Resultados em `dados/amostra_redes/resultado/delta/` e script em
    Treinos pedidos em sequência entram numa fila, um por vez.
 4. `GET /api/bases/{id}/clientes|validacao|pesos` — a fila da versão ativa, os números da validação e o
    peso de cada variável.
+5. `PATCH /api/bases/{id}/execucoes/{eid}` — renomeia a versão (`rotulo`) e/ou refaz a ordem da fila com
+   outros `pesos_score` (`{risco, valor, delta}`), sem treinar de novo; `pesos_score: null` volta à ordem padrão.
+6. `POST /api/bases/{id}/execucoes/{eid}/cancelar` — cancela um treino na fila (sai na hora) ou em andamento (o
+   motor para na próxima etapa ou dobra); a versão fica `cancelada`.
+7. `POST /api/bases/{id}/analise` — "Analisar dados": cancelados × ativos, métrica a métrica, nos 12 meses antes
+   da saída (mediana e faixa P25–P75), calculado no servidor sobre a base guardada e sem precisar de modelo.
 
-A coluna de cancelamento **nunca** vira variável, e a API nunca reordena a fila: só filtra.
+No treino (`opcoes`): `pesos_colunas` (peso 0–1 por coluna) e `pesos_score` (score que ordena a fila). Cada
+cliente da fila traz também `datas` (colunas de data da tabela de clientes, em `AAAA-MM`) e, com `pesos_score`, `score`.
+
+A coluna de cancelamento **nunca** vira variável, e a API nunca reordena a fila além do que o motor define: só filtra.
 
 ## App (`web/`)
 
 | Tela | O que mostra |
 |---|---|
-| **Fila** | A fila explicada: posição, faixa, risco, variação vs. o mês anterior, perda anual esperada e os sinais que dispararam. Clicar num cliente abre o painel com as evidências, os gráficos de 18 meses e a ação sugerida. Os filtros são gerados a partir dos atributos que a base tiver. |
-| **Modelos** | Enviar uma base, confirmar o que prever (a partir da leitura que o motor faz), escolher quais colunas entram, e treinar. Cada treino vira uma versão, com progresso real vindo do motor; a lista permite trocar qual versão vale e apagar as outras. |
+| **Fila** | A fila explicada: posição, faixa, score (quando a versão tem pesos), risco, variação vs. o mês anterior, perda anual esperada e os sinais que dispararam. Clicar num cliente abre o painel com as evidências, os gráficos de 18 meses e a ação sugerida. Os filtros são gerados a partir dos atributos e das datas (ex.: início do contrato) que a base tiver. |
+| **Modelos** | Enviar uma base, confirmar o que prever (a partir da leitura que o motor faz), analisar os dados, escolher quais colunas entram (com peso manual opcional), definir os pesos do score da fila e treinar. Cada treino vira uma versão, com progresso real vindo do motor e botão para cancelar; a lista permite renomear, mudar os pesos do score, trocar qual versão vale e apagar. |
 | **Validação** | Os três critérios da banca: com quanta antecedência o sinal aparece, o quanto separa quem ficou, e o que acontece no topo da fila — mais os 22 que saíram, com o risco que o modelo dava a cada um antes da saída. |
 
 O app **nunca reordena a fila**: a ordem é a `prioridade` que o motor devolve, e filtrar só esconde
-linhas. Onde a tela pediria algo que o motor não sustenta, o controle fica visível e desativado,
-com o motivo à mostra — a lista está em [`PENDENCIAS-MOTOR.md`](PENDENCIAS-MOTOR.md).
+linhas. O que a tela já pediu e o motor ainda não sustentava foi resolvido; o histórico está em
+[`PENDENCIAS-MOTOR.md`](PENDENCIAS-MOTOR.md).
 
 `uv run python -m api.preparar_demos` deixa as duas bases prontas: a INOVAAPPS em ~30 s e a das redes em
 ~9,5 min (inspeção mais treino). É idempotente: rodar de novo não refaz nada, a menos de `--forcar`.

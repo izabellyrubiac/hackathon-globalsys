@@ -7,7 +7,7 @@
 
 export type Faixa = 'alto' | 'atencao' | 'baixo'
 
-export type EstadoExecucao = 'na_fila' | 'treinando' | 'pronta' | 'erro'
+export type EstadoExecucao = 'na_fila' | 'treinando' | 'pronta' | 'erro' | 'cancelada'
 export type EstadoBase = 'inspecionada' | EstadoExecucao
 
 // --------------------------------------------------------------------------- inspeção
@@ -69,6 +69,13 @@ export interface Mapeamento {
   rotulos: Record<string, string>
 }
 
+/** Pesos do score que ordena a fila: (p1·risco + p2·valor + p3·variação do risco) ÷ soma. */
+export interface PesosScore {
+  risco: number
+  valor: number
+  delta: number
+}
+
 export interface Opcoes {
   modelo: 'auto' | 'logistica' | 'random_forest' | 'lightgbm'
   horizonte_meses?: number | null
@@ -78,6 +85,10 @@ export interface Opcoes {
   validar?: boolean | null
   dobras?: number | null
   semente?: number | null
+  /** Peso 0–1 por coluna ("tabela.coluna"): escala a seleção da logística; 0 tira a coluna. */
+  pesos_colunas?: Record<string, number> | null
+  /** Ordena a fila por um score 0–100. Sem isso vale a perda anual ajustada do motor. */
+  pesos_score?: PesosScore | null
   avancado?: Record<string, unknown>
 }
 
@@ -255,6 +266,8 @@ export interface ClienteFila {
   cliente_id: string
   /** Colunas categóricas da tabela de clientes — as chaves mudam de base para base. */
   atributos: Record<string, string>
+  /** Colunas de data da tabela de clientes em AAAA-MM (ex.: inicio_contrato). */
+  datas?: Record<string, string | null>
   valor_mensal: number | null
   situacao: string
   risco: number
@@ -266,6 +279,8 @@ export interface ClienteFila {
   delta_risco?: number | null
   risco_ajustado?: number
   perda_anual_ajustada?: number | null
+  /** 0–100; só existe quando a versão tem pesos do score. */
+  score?: number | null
   meses_em_alerta: number
   evidencias: Evidencia[]
   fatores_secundarios: Evidencia[]
@@ -302,6 +317,7 @@ export interface ModeloFila {
   horizonte_meses: number
   cortes: { alto: number; atencao: number }
   formula_prioridade: string
+  colunas_data?: { coluna: string; rotulo: string }[]
   coluna_valor: { tabela: string; coluna: string } | null
   variaveis: VariavelModelo[]
   series_historico: SerieHistorico[]
@@ -323,6 +339,7 @@ export interface PaginaClientes {
   gerado_em: string | null
   mes_referencia: string | null
   modelo: ModeloFila | null
+  pesos_score?: PesosScore | null
   resumo: ResumoFila | null
   total: number
   total_filtrado: number
@@ -411,4 +428,29 @@ export interface Validacao {
   avisos: string[]
   config: Record<string, unknown>
   [k: string]: unknown
+}
+
+// --------------------------------------------------------------------------- análise exploratória (POST /analise)
+export interface Quartis { med: number; p25: number; p75: number; n: number }
+
+export interface Ponto {
+  rel: number
+  c: Quartis | null
+  a: Quartis | null
+}
+
+export interface Serie {
+  tabela: string
+  coluna: string
+  rotulo: string
+  auc: number
+  antecedencia: number | null
+  pontos: Ponto[]
+}
+
+export interface Analise {
+  series: Serie[]
+  cancelados: number
+  ativos: number
+  referencia: string
 }

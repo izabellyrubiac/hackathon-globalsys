@@ -35,7 +35,7 @@ from pathlib import Path
 
 from .ajustes import EXTENSOES_OK, raiz_bases
 
-ESTADOS = ("na_fila", "treinando", "pronta", "erro")
+ESTADOS = ("na_fila", "treinando", "pronta", "erro", "cancelada")
 ATIVAS = ("na_fila", "treinando")           # execuções que ainda vão mexer no disco
 RESULTADOS = ("clientes", "validacao", "pesos")
 DEMONSTRACOES = ("inovaapps", "redes")

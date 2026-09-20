@@ -21,6 +21,10 @@ _RE_NUM = re.compile(r"^[+-]?(\d{1,3}(\.\d{3})+|\d+)(,\d+)?$|^[+-]?(\d{1,3}(,\d{
 
 
 # --------------------------------------------------------------------------- tipos básicos
+
+class TreinoCancelado(Exception):
+    """Levantada dentro de `treinar` quando o `cancelar` pedido pelo chamador dispara (parada cooperativa)."""
+
 def eh_numerica(s: pd.Series) -> bool:
     return pd.api.types.is_numeric_dtype(s) and not pd.api.types.is_bool_dtype(s)
 
@@ -191,6 +195,23 @@ def rotulo_coluna(nome: str) -> str:
     t = re.sub(r"[_\s]+", " ", str(nome)).strip()
     t = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", t)
     return (t[:1].upper() + t[1:].lower()) if t else str(nome)
+
+
+PALAVRAS = {"criticos": "críticos", "medio": "médio", "resolucao": "resolução", "reclamacoes": "reclamações",
+            "reunioes": "reuniões", "nps": "NPS", "sla": "SLA", "servico": "serviço", "servicos": "serviços",
+            "numero": "número", "ultimo": "último", "media": "média", "historico": "histórico", "inicio": "início",
+            "saida": "saída", "situacao": "situação"}
+
+
+def rotulo_legivel(coluna: str) -> str:
+    """snake_case → nome de tela: sem sufixo técnico (pct → "(%)", h → "(h)") e com as palavras comuns acentuadas."""
+    w, un = [x for x in str(coluna).split("_") if x], ""
+    if "pct" in w:
+        w, un = [x for x in w if x != "pct"], " (%)"
+    elif len(w) > 1 and w[-1] == "h":
+        w, un = w[:-1], " (h)"
+    t = " ".join(PALAVRAS.get(x.lower(), x) for x in w) + un
+    return t[:1].upper() + t[1:] if t else str(coluna)
 
 
 def minusc(t: str) -> str:

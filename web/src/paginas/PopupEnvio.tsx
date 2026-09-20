@@ -1,9 +1,4 @@
-/** Envio de uma base: um .xlsx com várias abas ou vários .csv.
- *
- * O mesmo arquivo segue dois caminhos: vai para a API (que faz a leitura de verdade e devolve a
- * inspeção) e é lido aqui no navegador, para alimentar o botão "Analisar dados". A leitura local
- * é só exploratória e nunca substitui o motor.
- */
+/** Envio de uma base: um .xlsx com várias abas ou vários .csv. A API lê, inspeciona e guarda os arquivos. */
 
 import { useRef, useState } from 'react'
 import * as api from '../api/cliente'
@@ -11,14 +6,13 @@ import { ErroApi } from '../api/cliente'
 import type { BaseCriada } from '../api/tipos'
 import { CaixaErro } from '../componentes/Estados'
 import { Popup } from '../componentes/Popup'
-import { lerArquivos, type Planilhas } from '../analise/planilha'
 import { kb } from '../formato'
 
 const ACEITA = /\.(xlsx|xlsm|xls|csv|tsv|txt)$/i
 
 export function PopupEnvio({ aoFechar, aoEnviar }: {
   aoFechar: () => void
-  aoEnviar: (base: BaseCriada, planilhas: Planilhas | null) => void
+  aoEnviar: (base: BaseCriada) => void
 }) {
   const [arquivos, setArquivos] = useState<File[]>([])
   const [enviando, setEnviando] = useState(false)
@@ -42,15 +36,7 @@ export function PopupEnvio({ aoFechar, aoEnviar }: {
     setEnviando(true)
     setErro(null)
     try {
-      // O envio manda; a leitura local é um extra e não pode derrubar o fluxo.
-      const base = await api.enviarBase(arquivos)
-      let planilhas: Planilhas | null = null
-      try {
-        planilhas = await lerArquivos(arquivos)
-      } catch {
-        planilhas = null
-      }
-      aoEnviar(base, planilhas)
+      aoEnviar(await api.enviarBase(arquivos))
     } catch (e) {
       setErro(e instanceof ErroApi ? e : new ErroApi(0, String(e)))
       setEnviando(false)

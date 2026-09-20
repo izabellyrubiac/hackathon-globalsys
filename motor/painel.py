@@ -69,6 +69,7 @@ class Base:
     rotulos: dict[str, str]
     avisos: list[str] = field(default_factory=list)
     excluidos: list[str] = field(default_factory=list)   # cancelados sem dados antes da saída
+    datas: pd.DataFrame | None = None  # colunas de data da tabela de clientes (AAAA-MM), uma linha por cliente
 
     @property
     def fotografia(self) -> bool:
@@ -126,6 +127,13 @@ def preparar(tabelas: dict[str, pd.DataFrame], m: Mapeamento, cfg: Config) -> Ba
                  and (m.tabela_clientes, c) not in m.colunas_alvo()][:8]
     atributos = cli.assign(__cli=ids_serie).dropna(subset=["__cli"]).drop_duplicates("__cli").set_index("__cli")[attr_cols]
     atributos = atributos.reindex(idx)
+    # datas da tabela de clientes (ex.: início do contrato), normalizadas em AAAA-MM: viram filtros na fila
+    data_cols = [c for c in cli.columns if c != m.coluna_id and icli.tipos[c] == "data"
+                 and (m.tabela_clientes, c) not in m.colunas_alvo() and not m.ignorada(m.tabela_clientes, c)][:4]
+    datas = pd.DataFrame(index=idx)
+    if data_cols:
+        d = cli.assign(__cli=ids_serie).dropna(subset=["__cli"]).drop_duplicates("__cli").set_index("__cli")[data_cols]
+        datas = d.apply(lambda s: _mes_txt(para_mes(s))).reindex(idx)
 
     # tabelas de variáveis (ordem canônica: papel, linhas, colunas — independe de nomes e da ordem das abas)
     infos = sorted(est.tabelas.values(), key=lambda i: (ORDEM_PAPEL[i.papel], -i.linhas, -len(i.tipos), i.nome))
@@ -216,7 +224,12 @@ def preparar(tabelas: dict[str, pd.DataFrame], m: Mapeamento, cfg: Config) -> Ba
 
     rotulos = dict(m.rotulos)
     return Base(ids, cancelado, saida, valor, atributos, temporais, estaticas, mes_ref, fim_obs, deslocamento, est,
-                rotulos, avisos)
+                rotulos, avisos, datas=datas)
+
+
+def _mes_txt(p: pd.Series) -> pd.Series:
+    """Period mensal → 'AAAA-MM' (NaT continua vazio)."""
+    return p.astype(str).where(p.notna())
 
 
 def rotulo(base: Base, coluna: str) -> str:

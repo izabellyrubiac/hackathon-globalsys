@@ -22,6 +22,7 @@ from .esquema import inspecionar
 from .leitura import Tabelas, de_dataframes, ler_arquivos
 from .mapeamento import ErroMapeamento, Mapeamento
 from .treino import Resultado, treinar
+from .util import TreinoCancelado
 
-__all__ = ["Config", "ErroMapeamento", "Mapeamento", "Resultado", "Tabelas", "de_dataframes", "inspecionar",
-           "ler_arquivos", "treinar"]
+__all__ = ["Config", "ErroMapeamento", "Mapeamento", "Resultado", "Tabelas", "TreinoCancelado", "de_dataframes",
+           "inspecionar", "ler_arquivos", "treinar"]

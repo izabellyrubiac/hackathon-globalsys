@@ -28,6 +28,9 @@ from .modelos_classificacao.metricas import curva, desempenho, escolher_cortes, 
 from .modelos_classificacao.validacao_cruzada import ValidacaoOOF, validar
 from .modelos_previsao import ModeloPrevisao
 from .painel import Base, montar_grade, preparar
+from .score import pontuar, validar_pesos
+from .selecao import validar_pesos_colunas
+from .util import TreinoCancelado
 from .variaveis import Variavel, gerar
 
 
@@ -69,10 +72,22 @@ def _meses_seguidos_alerta(painel: pd.DataFrame, corte: float) -> pd.Series:
 
 
 def treinar(tabelas: dict[str, pd.DataFrame], m: Mapeamento, progresso=None, config: Config | None = None,
-            gerado_em: str | None = None) -> Resultado:
-    """Treina o motor numa base qualquer. `progresso(etapa: str, fracao: float)` é chamado a cada etapa."""
+            gerado_em: str | None = None, cancelar=None) -> Resultado:
+    """Treina o motor numa base qualquer. `progresso(etapa: str, fracao: float)` é chamado a cada etapa.
+
+    `cancelar` (um `threading.Event` ou um callable sem argumentos) é conferido a cada etapa e a cada dobra da
+    validação; quando dispara, `TreinoCancelado` sobe e nada é devolvido (parada cooperativa, sem matar thread)."""
     cfg = config or Config()
-    p = progresso or (lambda *_: None)
+    cfg.pesos_colunas = validar_pesos_colunas(cfg.pesos_colunas)      # ValueError em pt-BR antes de gastar tempo
+    cfg.pesos_score = validar_pesos(cfg.pesos_score)
+    parou = getattr(cancelar, "is_set", cancelar)
+    relatar = progresso or (lambda *_: None)
+
+    def p(etapa: str, fracao: float) -> None:
+        if parou is not None and parou():
+            raise TreinoCancelado("Treino cancelado.")
+        relatar(etapa, fracao)
+
     H = int(m.horizonte_meses)
     gerado = gerado_em or os.environ.get("GERADO_EM") or date.today().isoformat()
     with warnings.catch_warnings():
@@ -130,6 +145,14 @@ def treinar(tabelas: dict[str, pd.DataFrame], m: Mapeamento, progresso=None, con
             avisos.append("Validação desligada: cortes das faixas escolhidos no próprio treino (otimistas).")
 
         p("montando a fila", 0.92)
+        if cfg.pesos_colunas:
+            conhecidas = {f"{v.tabela}.{v.coluna}" for v in meta.values()} | {v.coluna for v in meta.values()}
+            soltos = sorted(k for k in cfg.pesos_colunas if k not in conhecidas)
+            if soltos:
+                avisos.append("Peso dado a coluna que não é candidata (ignorado): " + ", ".join(soltos) + ".")
+            if modelo.nome != "logistica" and any(0 < w < 1 for w in cfg.pesos_colunas.values()):
+                avisos.append("Pesos entre 0 e 1 só escalam a seleção da logística; neste modelo (árvores) só o peso 0 "
+                              "vale (a coluna sai). Os demais foram tratados como 1.")
         ref = painel[painel["referencia"]]
         fila = pd.DataFrame({"cliente": ref["cliente"].to_numpy(), "linha": ref.index,
                              "probabilidade": ref["p_final"].to_numpy()})
@@ -142,6 +165,12 @@ def treinar(tabelas: dict[str, pd.DataFrame], m: Mapeamento, progresso=None, con
                                   if cfg.delta_na_fila else fila["probabilidade"])
         fila["perda_anual_ajustada"] = fila["risco_ajustado"] * fila["valor_mensal"] * 12
         chave = fila["perda_anual_ajustada"] if base.valor is not None else fila["risco_ajustado"]
+        fila["score"] = np.nan
+        if cfg.pesos_score:                  # score opcional (motor/score.py): ordena a fila no lugar da perda ajustada
+            pw = validar_pesos(cfg.pesos_score)
+            fila["score"] = pontuar(fila["probabilidade"], fila["valor_mensal"] if base.valor is not None else None,
+                                    fila["delta_risco"], pw).round(1)
+            chave = fila["score"]
         fila = fila.assign(_ch=chave.fillna(-1.0)).sort_values(["_ch", "probabilidade", "cliente"],
                                                               ascending=[False, False, True]).drop(columns="_ch")
         fila["prioridade"] = np.arange(1, len(fila) + 1)

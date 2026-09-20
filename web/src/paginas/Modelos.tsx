@@ -8,18 +8,20 @@ import { useEffect, useMemo, useState } from 'react'
 import * as api from '../api/cliente'
 import { ErroApi } from '../api/cliente'
 import { useRecurso } from '../api/ganchos'
-import type { BaseDetalhe, BaseResumo, Execucao, Mapeamento, Tabela } from '../api/tipos'
+import type { BaseDetalhe, BaseResumo, Execucao, Mapeamento, Opcoes, Tabela } from '../api/tipos'
 import { Barra } from '../componentes/Barra'
 import { Avisos, CaixaErro, Carregando } from '../componentes/Estados'
-import { Chip, Desativado } from '../componentes/Faixa'
+import { Chip } from '../componentes/Faixa'
 import { CampoSelect, Select } from '../componentes/Select'
 import { useToast } from '../componentes/Toast'
-import { PENDENCIAS } from '../desativado'
 import { EM_ANDAMENTO, achatarExecucoes, type LinhaVersao } from '../dominio'
 import { useSessao } from '../estado/Sessao'
 import { dataHora, norm, num } from '../formato'
 import { irPara } from '../rotas'
 import { CardAnalise } from './CardAnalise'
+import {
+  CamposPesosScore, PESOS_PADRAO, PopupPesos, lerPesos, pesosTexto, type RascunhoPesos,
+} from './PopupPesos'
 import { PopupEnvio } from './PopupEnvio'
 
 export function Modelos({ bases, carregandoBases, recarregarBases }: {
@@ -27,7 +29,7 @@ export function Modelos({ bases, carregandoBases, recarregarBases }: {
   carregandoBases: boolean
   recarregarBases: () => void
 }) {
-  const { baseId, escolherBase, planilhas, guardarPlanilhas, avisarMudanca } = useSessao()
+  const { baseId, escolherBase, avisarMudanca } = useSessao()
   const toast = useToast()
   const [popup, setPopup] = useState(false)
   const [recarga, setRecarga] = useState(0)
@@ -141,18 +143,18 @@ export function Modelos({ bases, carregandoBases, recarregarBases }: {
       {detalhe.dados && (
         <Treino
           base={detalhe.dados}
-          planilhas={planilhas[detalhe.dados.base_id] ?? null}
+          andamento={linhas.filter((l) => l.base_id === detalhe.dados!.base_id && EM_ANDAMENTO(l.estado))}
           aoTreinar={() => { atualizar(); toast('Treino começou. Acompanhe na lista acima.') }}
+          aoCancelar={() => { atualizar(); toast('Cancelamento pedido. O motor para na próxima etapa.') }}
         />
       )}
 
       {popup && (
         <PopupEnvio
           aoFechar={() => setPopup(false)}
-          aoEnviar={(base, lidas) => {
+          aoEnviar={(base) => {
             setPopup(false)
             escolherBase(base.base_id)
-            if (lidas) guardarPlanilhas(base.base_id, lidas)
             atualizar()
             toast(`Base "${base.nome}" enviada e inspecionada.`)
           }}
@@ -173,14 +175,24 @@ function TabelaVersoes({ linhas, carregando, erro, aoAtualizar, aoVerFila }: {
   const toast = useToast()
   const [ocupado, setOcupado] = useState<string | null>(null)
   const [falha, setFalha] = useState<ErroApi | null>(null)
+  const [editando, setEditando] = useState<string | null>(null)   // chave da linha com o nome em edição
+  const [nome, setNome] = useState('')
+  const [pesosDe, setPesosDe] = useState<LinhaVersao | null>(null)
 
-  async function agir(l: LinhaVersao, acao: 'ativar' | 'apagar') {
+  async function agir(l: LinhaVersao, acao: 'ativar' | 'apagar' | 'cancelar' | 'renomear') {
     setOcupado(l.chave)
     setFalha(null)
     try {
       if (acao === 'ativar') {
         await api.ativarExecucao(l.base_id, l.execucao_id)
         toast(`"${l.rotulo}" agora é a versão em uso em ${l.base_nome}.`)
+      } else if (acao === 'cancelar') {
+        await api.cancelarExecucao(l.base_id, l.execucao_id)
+        toast(`Cancelamento de "${l.rotulo}" pedido. O motor para na próxima etapa.`)
+      } else if (acao === 'renomear') {
+        await api.atualizarExecucao(l.base_id, l.execucao_id, { rotulo: nome.trim() || null })
+        setEditando(null)
+        toast('Versão renomeada.')
       } else {
         await api.apagarExecucao(l.base_id, l.execucao_id)
         toast(`Versão "${l.rotulo}" apagada.`)
@@ -210,7 +222,9 @@ function TabelaVersoes({ linhas, carregando, erro, aoAtualizar, aoVerFila }: {
           <thead>
             <tr>
               <th>Versão</th><th>Base</th><th>Algoritmo</th><th>Criada em</th>
-              <th>Variáveis</th><th title="AUC no último mês antes da saída">AUC −1</th>
+              <th>Variáveis</th>
+              <th title="Pesos do score que ordena a fila: risco · valor mensal · variação do risco">Ordem da fila</th>
+              <th title="AUC no último mês antes da saída">AUC −1</th>
               <th title="Cancelados que estavam na faixa alto um mês antes de sair">Pegou</th>
               <th title="Ativos hoje na faixa alto">Alarme hoje</th>
               <th />
@@ -220,8 +234,19 @@ function TabelaVersoes({ linhas, carregando, erro, aoAtualizar, aoVerFila }: {
             {linhas.map((l) => (
               <tr key={l.chave}>
                 <td>
-                  <b>{l.rotulo}</b>
+                  {editando === l.chave ? (
+                    <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <input aria-label={`Novo nome de ${l.rotulo}`} value={nome} maxLength={80} autoFocus
+                             onChange={(e) => setNome(e.target.value)}
+                             onKeyDown={(e) => { if (e.key === 'Enter') agir(l, 'renomear'); if (e.key === 'Escape') setEditando(null) }} />
+                      <button className="btn sm" disabled={ocupado === l.chave} onClick={() => agir(l, 'renomear')}>Salvar</button>
+                      <button className="btn ghost sm" onClick={() => setEditando(null)}>Cancelar</button>
+                    </span>
+                  ) : (
+                    <b>{l.rotulo}</b>
+                  )}
                   {l.ativa && <> <Chip title="É a versão que a Fila e a Validação mostram para esta base.">em uso</Chip></>}
+                  {l.estado === 'cancelada' && <><br /><small className="mut">Treino cancelado.</small></>}
                   {EM_ANDAMENTO(l.estado) && (
                     <>
                       <br /><small className="mut">{l.etapa || l.estado}…</small>
@@ -244,10 +269,23 @@ function TabelaVersoes({ linhas, carregando, erro, aoAtualizar, aoVerFila }: {
                 <td>{l.algoritmo ?? <span className="mut">—</span>}</td>
                 <td className="num">{dataHora(l.criada_em)}</td>
                 <td className="num">{l.variaveis ?? '—'}</td>
+                <td className="num" title={l.pesos_score ? 'Score: risco · valor mensal · variação do risco' : 'Ordem padrão do motor'}>
+                  {l.estado === 'pronta' ? (l.pesos_score ? pesosTexto(l.pesos_score) : <span className="mut">perda ajustada</span>) : '—'}
+                </td>
                 <td className="num">{l.auc_k1 != null ? num(l.auc_k1, 3) : '—'}</td>
                 <td className="num">{l.cancelados_pegos ?? '—'}</td>
                 <td className="num">{l.alarme_hoje ?? '—'}</td>
                 <td style={{ whiteSpace: 'nowrap' }}>
+                  {EM_ANDAMENTO(l.estado) && (
+                    <><button className="btn ghost sm" disabled={ocupado === l.chave}
+                              title="Um treino na fila sai da fila; um em andamento para na próxima etapa."
+                              onClick={() => agir(l, 'cancelar')}>Cancelar</button>{' '}</>
+                  )}
+                  <button className="btn ghost sm" disabled={editando === l.chave}
+                          onClick={() => { setNome(l.rotulo); setEditando(l.chave) }}>Renomear</button>{' '}
+                  <button className="btn ghost sm" disabled={l.estado !== 'pronta'}
+                          title={l.estado !== 'pronta' ? 'Só uma versão pronta tem fila para reordenar.' : 'Mudar os pesos do score que ordena a fila.'}
+                          onClick={() => setPesosDe(l)}>Pesos</button>{' '}
                   <button className="btn ghost sm" disabled={l.estado !== 'pronta'}
                           title={l.estado !== 'pronta' ? 'A versão ainda não ficou pronta.' : undefined}
                           onClick={() => aoVerFila(l)}>Ver fila</button>{' '}
@@ -268,9 +306,13 @@ function TabelaVersoes({ linhas, carregando, erro, aoAtualizar, aoVerFila }: {
         </table>
       </div>
 
-      <Desativado pendencia={PENDENCIAS.renomearVersao}>
-        <button className="btn ghost sm" disabled tabIndex={-1}>Renomear versão</button>
-      </Desativado>
+      {pesosDe && (
+        <PopupPesos
+          baseId={pesosDe.base_id} execucaoId={pesosDe.execucao_id} rotulo={pesosDe.rotulo}
+          atual={pesosDe.pesos_score} aoFechar={() => setPesosDe(null)}
+          aoSalvar={() => { setPesosDe(null); aoAtualizar() }}
+        />
+      )}
     </div>
   )
 }
@@ -288,6 +330,12 @@ interface Rascunho {
   horizonte_meses: number
   rotulo: string
   ignoradas: Set<string>
+  /** Pesos por coluna: Manual mostra os sliders; cada coluna vale 1 até o usuário mexer. */
+  manual: boolean
+  pesos: Record<string, number>
+  /** Ordenar a fila por score (pesos do risco, do valor e da variação). Desligado = ordem padrão do motor. */
+  usarScore: boolean
+  score: RascunhoPesos
 }
 
 function doSugerido(b: BaseDetalhe): Rascunho {
@@ -305,18 +353,38 @@ function doSugerido(b: BaseDetalhe): Rascunho {
     horizonte_meses: m?.horizonte_meses || s.horizonte_meses || 3,
     rotulo: '',
     ignoradas: new Set(m?.colunas_ignoradas ?? []),
+    manual: false,
+    pesos: {},
+    usarScore: false,
+    score: { ...PESOS_PADRAO },
   }
 }
 
-function Treino({ base, planilhas, aoTreinar }: {
+function Treino({ base, andamento, aoTreinar, aoCancelar }: {
   base: BaseDetalhe
-  planilhas: Record<string, Record<string, unknown>[]> | null
+  /** Versões desta base que estão na fila ou treinando. */
+  andamento: LinhaVersao[]
   aoTreinar: () => void
+  aoCancelar: () => void
 }) {
   const toast = useToast()
   const [r, setR] = useState<Rascunho>(() => doSugerido(base))
   const [enviando, setEnviando] = useState(false)
+  const [cancelando, setCancelando] = useState(false)
   const [erro, setErro] = useState<ErroApi | null>(null)
+
+  async function cancelarTreinos() {
+    setCancelando(true)
+    setErro(null)
+    try {
+      await Promise.all(andamento.map((l) => api.cancelarExecucao(l.base_id, l.execucao_id)))
+      aoCancelar()
+    } catch (e) {
+      setErro(e instanceof ErroApi ? e : new ErroApi(0, String(e)))
+    } finally {
+      setCancelando(false)
+    }
+  }
 
   // Trocar de base recomeça o formulário com o que a inspeção daquela base sugeriu.
   useEffect(() => { setR(doSugerido(base)); setErro(null) }, [base.base_id])
@@ -364,30 +432,36 @@ function Treino({ base, planilhas, aoTreinar }: {
     mudar({ ignoradas: marcar ? new Set() : new Set(candidatas.map((c) => c.chave)) })
   }
 
+  const mapeamento: Mapeamento = {
+    tabela_clientes: r.tabela_clientes,
+    coluna_id: r.coluna_id,
+    alvo_tabela: r.alvo_tabela,
+    coluna_situacao: r.coluna_situacao || null,
+    valor_cancelado: r.coluna_situacao ? r.valor_cancelado : null,
+    coluna_data_saida: r.coluna_data_saida || null,
+    valor_tabela: r.coluna_valor ? (r.valor_tabela || r.tabela_clientes) : null,
+    coluna_valor: r.coluna_valor || null,
+    horizonte_meses: r.horizonte_meses,
+    colunas_ignoradas: [...r.ignoradas],
+    acoes: {},
+    rotulos: {},
+  }
+  const pesosScore = r.usarScore ? lerPesos(r.score) : null
+  const scoreInvalido = r.usarScore && !pesosScore
+  const peso = (chave: string) => r.pesos[chave] ?? 1
+
   async function treinar() {
-    if (!pronto || enviando) return
+    if (!pronto || enviando || scoreInvalido) return
     setEnviando(true)
     setErro(null)
-    const mapeamento: Mapeamento = {
-      tabela_clientes: r.tabela_clientes,
-      coluna_id: r.coluna_id,
-      alvo_tabela: r.alvo_tabela,
-      coluna_situacao: r.coluna_situacao || null,
-      valor_cancelado: r.coluna_situacao ? r.valor_cancelado : null,
-      coluna_data_saida: r.coluna_data_saida || null,
-      valor_tabela: r.coluna_valor ? (r.valor_tabela || r.tabela_clientes) : null,
-      coluna_valor: r.coluna_valor || null,
-      horizonte_meses: r.horizonte_meses,
-      colunas_ignoradas: [...r.ignoradas],
-      acoes: {},
-      rotulos: {},
+    const opcoes: Opcoes = { modelo: 'auto' }
+    if (pesosScore) opcoes.pesos_score = pesosScore
+    if (r.manual) {                       // só as colunas marcadas e com peso diferente de 1
+      const alterados = candidatas.filter((c) => !r.ignoradas.has(c.chave) && peso(c.chave) !== 1)
+      if (alterados.length) opcoes.pesos_colunas = Object.fromEntries(alterados.map((c) => [c.chave, peso(c.chave)]))
     }
     try {
-      const resp = await api.treinar(base.base_id, {
-        mapeamento,
-        opcoes: { modelo: 'auto' },
-        rotulo: r.rotulo.trim() || null,
-      })
+      const resp = await api.treinar(base.base_id, { mapeamento, opcoes, rotulo: r.rotulo.trim() || null })
       if (resp.avisos?.length) toast(resp.avisos[0]!)
       aoTreinar()
     } catch (e) {
@@ -474,10 +548,7 @@ function Treino({ base, planilhas, aoTreinar }: {
       </div>
 
       {/* ------------------------------------------------------------- análise */}
-      <CardAnalise
-        planilhas={planilhas} colunaId={r.coluna_id} alvoTabela={r.alvo_tabela}
-        colunaDataSaida={r.coluna_data_saida || null} pronto={pronto}
-      />
+      <CardAnalise baseId={base.base_id} mapeamento={mapeamento} pronto={pronto} />
 
       {/* ------------------------------------------------------------- 3. Variáveis */}
       <div className="card">
@@ -485,6 +556,16 @@ function Treino({ base, planilhas, aoTreinar }: {
         <p className="sub mut">
           Todas as outras colunas são candidatas. O motor escolhe sozinho quais pesam, comparando
           quem saiu com quem ficou; desmarque só o que não deve ser usado.
+        </p>
+
+        <div className="seg" role="group" aria-label="Como definir os pesos">
+          <button aria-pressed={!r.manual} onClick={() => mudar({ manual: false })}>Automático (recomendado)</button>
+          <button aria-pressed={r.manual} onClick={() => mudar({ manual: true })}>Manual</button>
+        </div>
+        <p className="mut" style={{ margin: '10px 0', fontSize: 13 }}>
+          {r.manual
+            ? 'Dê um peso de 0 (ignorar) a 1 (normal) a cada variável marcada. O peso escala a penalização da seleção da logística; a seleção e a validação continuam automáticas e são refeitas com esses pesos. Nas árvores só o 0 vale.'
+            : 'O motor escolhe sozinho quais variáveis pesam. Desmarque apenas o que não deve ser usado.'}
         </p>
 
         {candidatas.length ? (
@@ -511,6 +592,14 @@ function Treino({ base, planilhas, aoTreinar }: {
                              }} />
                       {' '}{c.coluna}
                     </label>
+                    {r.manual && !r.ignoradas.has(c.chave) && (
+                      <>
+                        <input type="range" min={0} max={1} step={0.05} value={peso(c.chave)}
+                               aria-label={`Peso de ${c.coluna}`}
+                               onChange={(e) => mudar({ pesos: { ...r.pesos, [c.chave]: Number(e.target.value) } })} />
+                        <span className="pv">{peso(c.chave).toFixed(2)}</span>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>
@@ -520,12 +609,6 @@ function Treino({ base, planilhas, aoTreinar }: {
           <p className="mut">Escolha a tabela de clientes e a coluna do identificador para listar as variáveis.</p>
         )}
 
-        <Desativado pendencia={PENDENCIAS.pesoManual}>
-          <div className="seg" role="group" aria-label="Como definir os pesos">
-            <button aria-pressed="true" disabled tabIndex={-1}>Automático (recomendado)</button>
-            <button aria-pressed="false" disabled tabIndex={-1}>Manual</button>
-          </div>
-        </Desativado>
       </div>
 
       {/* ------------------------------------------------------------- 4. Treinar */}
@@ -544,16 +627,31 @@ function Treino({ base, planilhas, aoTreinar }: {
                  value={r.rotulo} onChange={(e) => mudar({ rotulo: e.target.value })} />
         </div>
 
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '4px 0 10px', cursor: 'pointer' }}>
+          <input type="checkbox" checked={r.usarScore} onChange={(e) => mudar({ usarScore: e.target.checked })} />
+          Ordenar a fila por um score com pesos meus (senão vale a perda anual ajustada do motor)
+        </label>
+        {r.usarScore && (
+          <div style={{ maxWidth: 640, marginBottom: 14 }}>
+            <CamposPesosScore valor={r.score} aoMudar={(score) => mudar({ score })} id="t-pesos" />
+          </div>
+        )}
+
         <CaixaErro erro={erro} titulo="Não consegui começar o treino." />
 
-        <button className="btn" disabled={!pronto || enviando} onClick={treinar}
-                title={pronto ? undefined : 'Complete a tabela de clientes, o identificador e o cancelamento.'}>
-          {enviando ? 'Enviando…' : 'Treinar modelo'}
-        </button>
-
-        <Desativado pendencia={PENDENCIAS.cancelarTreino}>
-          <button className="btn ghost" disabled tabIndex={-1}>Cancelar treino</button>
-        </Desativado>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <button className="btn" disabled={!pronto || enviando || scoreInvalido} onClick={treinar}
+                  title={!pronto ? 'Complete a tabela de clientes, o identificador e o cancelamento.'
+                        : scoreInvalido ? 'Corrija os pesos do score.' : undefined}>
+            {enviando ? 'Enviando…' : 'Treinar modelo'}
+          </button>
+          {andamento.length > 0 && (
+            <button className="btn ghost" disabled={cancelando} onClick={cancelarTreinos}
+                    title="Cancela os treinos desta base que estão na fila ou em andamento.">
+              {cancelando ? 'Cancelando…' : `Cancelar treino${andamento.length > 1 ? 's' : ''}`}
+            </button>
+          )}
+        </div>
       </div>
     </>
   )

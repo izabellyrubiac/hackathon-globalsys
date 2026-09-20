@@ -4,7 +4,7 @@ Base grande: `perfil_automatico()` reduz dobras e rodadas (ver `perfil`)."""
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, replace
+from dataclasses import asdict, dataclass, field, replace
 
 MODELOS_VALIDOS = ("auto", "logistica", "random_forest", "lightgbm")
 
@@ -60,6 +60,11 @@ class Config:
     delta_placebo: bool = False      # diagnóstico: embaralha o delta (mesma distribuição, informação zero).
                                      # Braço de controle — mede quanto da diferença entre "com" e "sem" delta é
                                      # só o ruído de refazer a seleção com duas candidatas a mais.
+    # pesos do usuário
+    pesos_colunas: dict = field(default_factory=dict)  # {"tabela.coluna" | "coluna": 0–1}: escala a penalização na seleção
+                                     # da logística (1 = normal, 0 = ignora); nas árvores só o 0 vale (ver motor/selecao.py)
+    pesos_score: dict | None = None  # {risco, valor, delta}: ordena a fila por um score 0–100 (ver motor/score.py);
+                                     # None = ordem padrão (perda anual ajustada)
     # validação
     dobras: int = 10                 # validação externa agrupada por cliente (seleção refeita em cada dobra)
     validar: bool = True

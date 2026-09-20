@@ -45,6 +45,8 @@ input[type=checkbox]{width:auto}input[type=range]{padding:0}input[type=checkbox]
 .var{display:flex;align-items:center;gap:12px;padding:7px 12px;border-radius:4px}.var:nth-child(even){background:var(--soft)}
 .var label{flex:1;display:flex;align-items:center;gap:10px;cursor:pointer}
 .var input[type=range]{width:180px}
+.var .pv{width:34px;text-align:right;font-variant-numeric:tabular-nums}
+.pesos label{display:block;margin:12px 0 4px;font-size:13px;font-weight:600}.pesos input{max-width:220px}
 .ring{width:56px;height:56px;border:5px solid var(--soft);border-top-color:var(--pri);border-radius:50%;animation:sp 1s linear infinite;margin:14px auto}@keyframes sp{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.ring{animation-duration:4s}}
 .bar{height:8px;border-radius:4px;background:var(--soft);overflow:hidden}.bar i{display:block;height:100%;background:var(--pri);transition:width .4s}
@@ -119,10 +121,6 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:2px solid #fff
 .fx.baixo{background:#eef1f5;color:var(--lo)}
 
 /* controle que existe na tela mas o motor não sustenta */
-.off{margin:10px 0;padding:12px 14px;border:1px dashed var(--edge);border-radius:4px;background:var(--soft)}
-.off-c{opacity:.45;pointer-events:none;filter:saturate(.2)}
-.off-n{margin-top:8px;font-size:12.5px;line-height:1.45}
-.off-n a{color:var(--mut);text-decoration:underline}
 
 /* tira de números no topo da fila e da validação */
 

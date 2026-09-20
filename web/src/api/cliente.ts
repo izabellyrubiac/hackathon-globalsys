@@ -5,7 +5,8 @@
  */
 
 import type {
-  BaseCriada, BaseDetalhe, BaseResumo, Execucao, Faixa, Inspecao, PaginaClientes, PedidoTreino,
+  Analise, BaseCriada, BaseDetalhe, BaseResumo, Execucao, Faixa, Inspecao, Mapeamento, PaginaClientes,
+  PedidoTreino, PesosScore,
   Status, TreinoAceito, Validacao,
 } from './tipos'
 
@@ -96,6 +97,23 @@ export const ativarExecucao = (id: string, eid: string) =>
   pedir<Execucao>(
     `/api/bases/${encodeURIComponent(id)}/execucoes/${encodeURIComponent(eid)}/ativar`,
     { method: 'POST' })
+
+/** Renomeia a versão e/ou refaz a ordem da fila com outros pesos do score (`pesos_score: null` volta ao padrão). */
+export const atualizarExecucao = (
+  id: string, eid: string, corpo: { rotulo?: string | null; pesos_score?: PesosScore | null },
+) =>
+  pedir<Execucao>(
+    `/api/bases/${encodeURIComponent(id)}/execucoes/${encodeURIComponent(eid)}`,
+    { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(corpo) })
+
+export const cancelarExecucao = (id: string, eid: string) =>
+  pedir<Execucao>(
+    `/api/bases/${encodeURIComponent(id)}/execucoes/${encodeURIComponent(eid)}/cancelar`,
+    { method: 'POST' })
+
+/** "Analisar dados": cancelados × ativos, métrica a métrica, calculado no servidor sobre a base guardada. */
+export const analisarBase = (id: string, mapeamento: Mapeamento, s?: AbortSignal) =>
+  pedir<Analise>(`/api/bases/${encodeURIComponent(id)}/analise`, json(mapeamento, s))
 
 export const apagarExecucao = (id: string, eid: string) =>
   pedir<null>(`/api/bases/${encodeURIComponent(id)}/execucoes/${encodeURIComponent(eid)}`,
