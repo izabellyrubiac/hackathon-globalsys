@@ -1,4 +1,13 @@
-"""Candidata **delta de risco**: o motor em dois estágios (`Config.delta_risco = True`).
+"""**Delta de risco**: a variação da probabilidade prevista de um mês para o outro. Dois usos independentes.
+
+* **Na fila** (`Config.delta_na_fila`, padrão ligado): `delta_mes_anterior` e `risco_ajustado`. Não treina nada:
+  usa o risco do modelo final que já existe. Quem subiu de risco é mais urgente, então a fila ordena por
+  `min(p + máx(Δp, 0), 1) × valor × 12`. Queda de risco não é premiada (Δp negativo vale 0) e a faixa continua
+  vindo do risco `p`, não do ajustado. Sem mês anterior pontuado o delta é nulo e o ajuste é zero.
+* **Como candidata** (`Config.delta_risco`, padrão desligado): o motor em dois estágios, abaixo. Testado nas
+  duas bases, não melhora o acerto (`experimentos/delta_risco.py`).
+
+Candidata **delta de risco**: o motor em dois estágios (`Config.delta_risco = True`).
 
 Ideia: o nível do risco já é o que a fila usa; o que ele não diz é se o risco **subiu**. O delta é a
 variação da própria probabilidade prevista de um mês para o outro, oferecida como mais uma candidata —
@@ -47,6 +56,24 @@ COLUNA = "risco_previsto"
 ROTULO_COLUNA = "Risco previsto"
 ID_DELTA = "risco_previsto__delta"
 ID_DELTA_3M = "risco_previsto__delta_3m"
+
+
+def delta_mes_anterior(painel: pd.DataFrame, linhas: pd.Index) -> pd.Series:
+    """Δp = `p_final` do mês de cada linha − `p_final` do mês calendário anterior do mesmo cliente.
+
+    `linhas` são índices do `painel` (colunas `cliente`, `mes`, `p_final`); o resultado vem alinhado a elas.
+    Nulo quando o cliente não tem o mês anterior pontuado (primeiro mês, buraco nos dados, modo fotografia)."""
+    q = painel.loc[linhas, ["cliente", "mes"]]
+    p_por_mes = painel.set_index(["cliente", "mes"])["p_final"]
+    anterior = pd.MultiIndex.from_arrays([q["cliente"], q["mes"] - 1])
+    p_ant = p_por_mes.reindex(anterior).to_numpy(dtype=float)
+    return pd.Series(painel.loc[linhas, "p_final"].to_numpy(dtype=float) - p_ant, index=linhas)
+
+
+def risco_ajustado(p, delta) -> np.ndarray:
+    """min(p + máx(Δp, 0), 1): só a piora conta; delta nulo = sem ajuste."""
+    d = np.nan_to_num(np.asarray(delta, dtype=float), nan=0.0)
+    return np.minimum(np.asarray(p, dtype=float) + np.clip(d, 0.0, None), 1.0)
 
 
 def ids(cfg: Config) -> list[str]:

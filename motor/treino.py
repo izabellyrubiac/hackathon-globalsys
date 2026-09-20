@@ -20,7 +20,7 @@ from sklearn.exceptions import ConvergenceWarning
 
 from . import saida
 from .config import Config
-from .delta import ajustar_modelo_com_delta
+from .delta import ajustar_modelo_com_delta, delta_mes_anterior, risco_ajustado
 from .explicar import acao_sugerida, explicar, meta_persistencias
 from .mapeamento import Mapeamento
 from .modelos_classificacao import escolha as esc
@@ -136,7 +136,12 @@ def treinar(tabelas: dict[str, pd.DataFrame], m: Mapeamento, progresso=None, con
         fila["valor_mensal"] = base.valor.reindex(fila["cliente"]).to_numpy() if base.valor is not None else np.nan
         fila["perda_anual_esperada"] = fila["probabilidade"] * fila["valor_mensal"] * 12
         fila["faixa_risco"] = faixa(fila["probabilidade"], cortes)
-        chave = fila["perda_anual_esperada"] if base.valor is not None else fila["probabilidade"]
+        # delta de risco (mês de referência × mês anterior): sempre calculado e enviado; ordena a fila se ligado
+        fila["delta_risco"] = delta_mes_anterior(painel, pd.Index(fila["linha"])).to_numpy()
+        fila["risco_ajustado"] = (risco_ajustado(fila["probabilidade"], fila["delta_risco"])
+                                  if cfg.delta_na_fila else fila["probabilidade"])
+        fila["perda_anual_ajustada"] = fila["risco_ajustado"] * fila["valor_mensal"] * 12
+        chave = fila["perda_anual_ajustada"] if base.valor is not None else fila["risco_ajustado"]
         fila = fila.assign(_ch=chave.fillna(-1.0)).sort_values(["_ch", "probabilidade", "cliente"],
                                                               ascending=[False, False, True]).drop(columns="_ch")
         fila["prioridade"] = np.arange(1, len(fila) + 1)

@@ -1,6 +1,7 @@
 <!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Global Oráculo</title>
+<link rel="icon" type="image/jpeg" href="public/globalsys_logo.jpg">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -16,68 +17,68 @@ p{margin:0}a{color:var(--pri)}.mut{color:var(--mut)}small{font-size:12px}
 .side{position:sticky;top:0;height:100vh;padding:20px 12px;background:var(--card);border-right:1px solid var(--edge);display:flex;flex-direction:column;gap:4px}
 .logo{font-size:20px;font-weight:700;letter-spacing:-.02em;padding:4px 14px 18px}.logo span{color:var(--pri)}
 .side nav{display:flex;flex-direction:column;gap:4px}
-.side nav a{display:block;padding:9px 14px;border-radius:99px;font-size:14px;text-decoration:none;color:var(--ink)}
+.side nav a{display:block;padding:9px 14px;border-radius:4px;font-size:14px;text-decoration:none;color:var(--ink)}
 .side nav a:hover{background:var(--soft)}.side nav a[aria-current="page"]{background:var(--pri);color:#fff}
-.modelo{margin-top:auto;padding:12px 14px;border-radius:14px;background:var(--soft);font-size:13px}
-.modelo b{display:block;margin-bottom:2px}
+.modelo{margin-top:auto;padding:12px 14px;border-radius:4px;background:var(--soft);font-size:13px}
+.modelo b{display:block;margin-bottom:2px}.modelo:empty{display:none}
 .main{padding:28px 32px 48px;min-width:0;width:100%}.main.estreito{max-width:1180px;margin:0 auto}
 .head{margin-bottom:20px}.head p{margin-top:6px;max-width:680px}
 
 /* componentes */
-.card{background:var(--card);border:1px solid var(--edge);border-radius:16px;padding:22px;margin-bottom:18px}
+.card{background:var(--card);border:1px solid var(--edge);border-radius:4px;padding:22px;margin-bottom:18px}
 .card>h2{display:flex;align-items:center;gap:10px}.card>h2 .n{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--pri);color:#fff;font-size:13px}
 .card>.sub{margin:4px 0 14px;font-size:14px}
-.btn{border:0;border-radius:8px;padding:10px 20px;font:600 14px "Instrument Sans",Inter,sans-serif;cursor:pointer;background:var(--pri);color:#fff}
+.btn{border:0;border-radius:4px;padding:10px 20px;font:600 14px "Instrument Sans",Inter,sans-serif;cursor:pointer;background:var(--pri);color:#fff}
 .btn:hover{filter:brightness(1.12)}.btn.ghost{background:var(--soft);color:var(--ink)}.btn:disabled{opacity:.4;cursor:not-allowed}.btn.sm{padding:5px 12px;font-size:13px}
-input,select{width:100%;padding:9px 12px;border:1px solid var(--edge);border-radius:10px;background:var(--in);color:var(--ink);font:inherit}
+input,select{width:100%;padding:9px 12px;border:1px solid var(--edge);border-radius:4px;background:var(--in);color:var(--ink);font:inherit}
 input[type=checkbox]{width:auto}input[type=range]{padding:0}input[type=checkbox],input[type=range]{accent-color:var(--pri)}
-.drop{border:2px dashed var(--acc);border-radius:14px;padding:30px;text-align:center;background:#f7f9fe;cursor:pointer}
+.drop{margin-top:14px;border:2px dashed var(--acc);border-radius:4px;padding:30px;text-align:center;background:#f7f9fe;cursor:pointer}
 .drop:focus-visible{outline-offset:4px}
 .tabs{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.tabs .chip{padding:4px 12px}
-.chip{display:inline-block;font-size:12px;background:var(--soft);color:var(--ink);border-radius:99px;padding:2px 10px;margin:1px}
+.chip{display:inline-block;font-size:12px;background:var(--soft);color:var(--ink);border-radius:4px;padding:2px 10px;margin:1px}
 .form{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px 18px}
 .form label{display:block;font-size:13px;font-weight:600;margin-bottom:4px}
+.form>div{display:flex;flex-direction:column}.form>div>:last-child{margin-top:auto}
 .form .par{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.seg{display:inline-flex;border:1px solid var(--edge);border-radius:99px;overflow:hidden}
+.seg{display:inline-flex;border:1px solid var(--edge);border-radius:4px;overflow:hidden}
 .seg button{border:0;background:transparent;color:var(--ink);padding:7px 16px;font:600 13px inherit;cursor:pointer}.seg button[aria-pressed="true"]{background:var(--pri);color:#fff}
 .vgrp{margin-top:14px}.vgrp h3{margin:0 0 6px;font-size:13px;color:var(--mut)}
-.var{display:flex;align-items:center;gap:12px;padding:7px 12px;border-radius:10px}.var:nth-child(even){background:var(--soft)}
+.var{display:flex;align-items:center;gap:12px;padding:7px 12px;border-radius:4px}.var:nth-child(even){background:var(--soft)}
 .var label{flex:1;display:flex;align-items:center;gap:10px;cursor:pointer}
 .var input[type=range]{width:180px}.var .pv{width:34px;text-align:right;font-variant-numeric:tabular-nums}
 .ring{width:56px;height:56px;border:5px solid var(--soft);border-top-color:var(--pri);border-radius:50%;animation:sp 1s linear infinite;margin:14px auto}@keyframes sp{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.ring{animation-duration:4s}}
-.bar{height:8px;border-radius:9px;background:var(--soft);overflow:hidden}.bar i{display:block;height:100%;background:var(--pri);transition:width .4s}
-.aviso{padding:10px 14px;border-radius:12px;background:var(--soft);font-size:13px;margin-bottom:16px}
+.bar{height:8px;border-radius:4px;background:var(--soft);overflow:hidden}.bar i{display:block;height:100%;background:var(--pri);transition:width .4s}
+.aviso{padding:10px 14px;border-radius:4px;background:var(--soft);font-size:13px;margin-bottom:16px}
 .ok{border-color:var(--pri)}
 
 /* ranking */
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:18px}
-.kpi{margin:0;padding:14px 18px}.kpi b{display:block;font-size:26px;font-weight:600}
 .tw{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:14px}
 th{text-align:left;font-size:12px;color:var(--mut);padding:8px;white-space:nowrap}td{padding:10px 8px;border-top:1px solid var(--line);vertical-align:top}
 tr.r{cursor:pointer}tr.r:hover,tr.r:focus-visible{background:var(--soft)}
-.pos{display:flex;align-items:center;gap:8px;white-space:nowrap}.pos b{font-size:18px;min-width:26px}
-.bd{padding:2px 10px;border-radius:99px;font-weight:600;font-size:12px;color:#fff}.bd.alto{background:var(--hi)}.bd.atencao{background:var(--md)}.bd.baixo{background:var(--lo)}
 .num{white-space:nowrap;font-variant-numeric:tabular-nums}
 td small{white-space:nowrap}
 .fila{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:18px;align-items:start}
 .fila>.card{margin-bottom:0}
 .cab{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:10px}.cab span{font-size:13px}
-.sc{min-width:92px}.sc b{font-size:16px}.sc .sbar{height:5px;border-radius:9px;background:var(--soft);margin:3px 0 2px;overflow:hidden}.sc .sbar i{display:block;height:100%}
+.sc{min-width:92px}.sc b{font-size:16px}.sc .sbar{height:5px;border-radius:4px;background:var(--soft);margin:3px 0 2px;overflow:hidden}.sc .sbar i{display:block;height:100%}
 .sc.alto i{background:var(--hi)}.sc.atencao i{background:var(--md)}.sc.baixo i{background:var(--lo)}
 .var-c{white-space:nowrap;font-variant-numeric:tabular-nums}.var-c small{display:block}
 .var-c.pior{color:var(--hi)}.var-c.melhor{color:var(--lo)}.var-c.igual{color:var(--mut)}
 .filtros{position:sticky;top:16px}.filtros h2{font-size:16px;margin-bottom:12px}
 .filtros label,.filtros .lb{display:block;font-size:13px;font-weight:600;margin:14px 0 4px}
-.fxs{display:flex;flex-wrap:wrap;gap:6px}.fxs button{border:1px solid var(--edge);background:var(--in);color:var(--ink);border-radius:99px;padding:4px 12px;font:600 13px "Instrument Sans",Inter,sans-serif;cursor:pointer}
+.fxs{display:flex;flex-wrap:wrap;gap:6px}.fxs button{border:1px solid var(--edge);background:var(--in);color:var(--ink);border-radius:4px;padding:4px 12px;font:600 13px "Instrument Sans",Inter,sans-serif;cursor:pointer}
 .fxs button[aria-pressed="true"]{background:var(--pri);border-color:var(--pri);color:#fff}
 .filtros .btn{width:100%;margin-top:18px}
 .vazio{padding:28px 8px;text-align:center}
 .mais{text-align:center;margin-top:14px}
 .drw{position:fixed;top:0;right:0;bottom:0;width:min(440px,100%);background:var(--drw);border-left:1px solid var(--edge);padding:24px;overflow:auto;z-index:9;box-shadow:-8px 0 30px #0002}
-.ev{padding:10px 12px;border-radius:12px;background:var(--soft);margin:8px 0}
+.leg{display:flex;flex-wrap:wrap;gap:6px 20px;font-size:13px;margin:12px 0 4px}.leg i{display:inline-block;width:22px;height:0;border-top:2px solid;vertical-align:middle;margin-right:6px}.leg i.cz{height:12px;border:0;background:var(--edge);opacity:.6;border-radius:2px;vertical-align:-2px}
+.ag{margin-top:22px}.ag h3{margin:0 0 2px;font-size:16px}.ag h3 span{font-weight:400;font-size:13px}
+.ag svg{display:block;width:100%;height:auto}.ag svg text{font:11px "Instrument Sans",Inter,sans-serif;fill:var(--mut)}
+.ev{padding:10px 12px;border-radius:4px;background:var(--soft);margin:8px 0}
 .spark{display:block;width:100%;height:auto;margin-top:8px}
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1f2430;color:#fff;padding:10px 18px;border-radius:10px;z-index:20}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1f2430;color:#fff;padding:10px 18px;border-radius:4px;z-index:20}
 
 @media(max-width:1000px){.fila{grid-template-columns:1fr}.filtros{position:static;order:-1}}
 @media(max-width:860px){
@@ -112,7 +113,8 @@ const S={
   sel:{},w:{},modo:'auto',
   treino:null,   // {passo} enquanto treina
   treinado:null, // {quando, vars} depois de treinar
-  rank:null
+  rank:null,
+  analise:null   // resultado do botão "Analisar dados"
 };
 
 /* ---------- ranking (mock do backend) ---------- */
@@ -160,14 +162,12 @@ function comparacao(h,chave){
   const v=h.map(x=>x.valores[chave]).filter(x=>typeof x=='number'),rec=v.slice(-3),ant=v.slice(-9,-3),m=a=>a.reduce((s,x)=>s+x,0)/a.length;
   return rec.length&&ant.length?{chave,recente:+m(rec).toFixed(2),anterior:+m(ant).toFixed(2),meses_recente:rec.length,meses_anterior:ant.length}:null;
 }
-const CANCELADOS_HISTORICO=11; // vem do backend (situacao = Cancelado)
 const api={ranking:()=>new Promise(ok=>setTimeout(()=>ok(CLIENTES.map(([id,seg,porte,plano,v,p,desde,mot,inicio,ant])=>{
   const h=historico(id,mot,p,ant);
   return{cliente_id:id,segmento:seg,porte,plano,valor_mensal:v,inicio_contrato:inicio,probabilidade:p,prob_mes_anterior:ant,score:Math.round(40+p*60),perda_anual_esperada:p*v*12,
   faixa:p>=.5?'alto':p>=.25?'atencao':'baixo',sinal_desde:desde,historico:h,
   motivos:mot.map(([k,evidencia])=>({titulo:MOT[k][0],evidencia,acao:MOT[k][1],chave_serie:SERIE[k],comparacao:SERIE[k]?comparacao(h,SERIE[k]):null}))}
 }).sort((a,b)=>b.perda_anual_esperada-a.perda_anual_esperada).map((c,i)=>({posicao:i+1,...c}))),350))};
-const FX={alto:'Alto',atencao:'Atenção',baixo:'Baixo'};
 const mesFmt=m=>m?MES[+m.slice(5,7)-1]+'/'+m.slice(0,4):'—';
 
 /* ---------- filtros do ranking (só filtram a exibição; a ordem e a posição vêm do backend) ---------- */
@@ -210,7 +210,7 @@ function load(f){
   }catch(e){toast('Não foi possível ler o arquivo. Envie .xlsx, .xls ou .csv.')}};
   r.readAsArrayBuffer(f);
 }
-function setData(sh,name){S.sheets=sh;S.file=name;S.sel={};S.w={};S.treinado=null;S.treino=null;sugerir();render()}
+function setData(sh,name){S.sheets=sh;S.file=name;S.sel={};S.w={};S.treinado=null;S.treino=null;S.analise=null;sugerir();render()}
 
 /* sugestão automática do mapeamento; o usuário confirma na tela */
 function sugerir(){
@@ -268,11 +268,9 @@ const rota=()=>location.hash=='#/modelos'?'modelos':'ranking';
 function viewRanking(){
   const r=S.rank;
   if(!r)return`<div class="head"><h1>Fila de atendimento</h1></div><div class="card"><p class="mut">Carregando a fila…</p></div>`;
-  const n=f=>r.filter(c=>c.faixa==f).length,receita=r.filter(c=>c.faixa=='alto').reduce((s,c)=>s+c.valor_mensal,0),
-    uniq=k=>[...new Set(r.map(c=>c[k]))].sort((a,b)=>String(a).localeCompare(b,'pt-BR')),
+  const uniq=k=>[...new Set(r.map(c=>c[k]))].sort((a,b)=>String(a).localeCompare(b,'pt-BR')),
     sel=(k,fk,id,rot)=>`<label for="${id}">${rot}</label><select id="${id}" onchange="setF('${fk}',this.value)"><option value="">Todos</option>${uniq(k).map(v=>`<option value="${esc(v)}" ${F[fk]===v?'selected':''}>${esc(v)}</option>`).join('')}</select>`;
   return`<div class="head"><h1>Fila de atendimento</h1></div>
-<div class="kpis">${[['Clientes ativos',r.length],['Risco alto',n('alto')],['Atenção',n('atencao')],['Receita mensal em risco alto',brl(receita)],['Cancelados no histórico',CANCELADOS_HISTORICO]].map(([l,v])=>`<div class="card kpi"><b>${v}</b><span class="mut">${l}</span></div>`).join('')}</div>
 <div class="fila"><div class="card" id="fila"></div>
 <aside class="card filtros" aria-label="Filtros"><h2>Filtros</h2>
 <label for="f-q" style="margin-top:0">Buscar cliente</label><input id="f-q" type="search" placeholder="Ex.: C017" value="${esc(F.q)}" oninput="setF('q',this.value)">
@@ -288,11 +286,10 @@ function pintarFila(){
   document.querySelectorAll('.fxs button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.f==F.faixa));
   const l=filtrar(),v=l.slice(0,F.n);
   el.innerHTML=`<div class="cab"><h2>Ordem de atendimento</h2><span class="mut">${l.length==S.rank.length?l.length+' clientes':l.length+' de '+S.rank.length+' clientes'}</span></div>
-${v.length?`<div class="tw"><table><tr><th>Posição</th><th>Score</th><th>Cliente</th><th>Valor mensal</th><th>Chance de cancelamento</th><th>Variação vs. mês anterior</th><th>Perda anual esperada</th><th>Por quê</th><th>Sinal desde</th></tr>
-${v.map(c=>`<tr class="r" tabindex="0" onclick="abrir(${c.posicao})" onkeydown="if(event.key=='Enter')abrir(${c.posicao})"><td><div class="pos"><b>${c.posicao}</b><span class="bd ${c.faixa}">${FX[c.faixa]}</span></div></td><td><div class="sc ${c.faixa}"><b>${c.score}</b><div class="sbar"><i style="width:${c.score}%"></i></div></div></td><td><b>${esc(c.cliente_id)}</b><br><small class="mut">${esc(c.segmento)} · ${esc(c.plano)} · ${esc(c.porte)}</small></td><td class="num">${brl(c.valor_mensal)}</td><td class="num"><b>${pc(c.probabilidade)}</b></td>${variacao(c)}<td class="num">${brl(c.perda_anual_esperada)}</td><td>${c.motivos.slice(0,3).map(o=>`<span class="chip">${esc(o.titulo)}</span>`).join('')||'<span class="mut">—</span>'}</td><td class="num">${esc(c.sinal_desde)}</td></tr>`).join('')}</table></div>`
+${v.length?`<div class="tw"><table><tr><th>Score</th><th>Cliente</th><th>Valor mensal</th><th>Chance de cancelamento</th><th>Variação vs. mês anterior</th><th>Perda anual esperada</th><th>Por quê</th><th>Sinal desde</th></tr>
+${v.map(c=>`<tr class="r" tabindex="0" onclick="abrir(${c.posicao})" onkeydown="if(event.key=='Enter')abrir(${c.posicao})"><td><div class="sc ${c.faixa}"><b>${c.score}</b><div class="sbar"><i style="width:${c.score}%"></i></div></div></td><td><b>${esc(c.cliente_id)}</b><br><small class="mut">${esc(c.segmento)} · ${esc(c.plano)} · ${esc(c.porte)}</small></td><td class="num">${brl(c.valor_mensal)}</td><td class="num"><b>${pc(c.probabilidade)}</b></td>${variacao(c)}<td class="num">${brl(c.perda_anual_esperada)}</td><td>${c.motivos.slice(0,3).map(o=>`<span class="chip">${esc(o.titulo)}</span>`).join('')||'<span class="mut">—</span>'}</td><td class="num">${esc(c.sinal_desde)}</td></tr>`).join('')}</table></div>`
   :'<p class="mut vazio">Nenhum cliente com esses filtros.</p>'}
-${l.length>v.length?`<div class="mais"><button class="btn sm" onclick="maisF()">Ver mais (${l.length-v.length})</button></div>`:''}
-<p class="mut" style="font-size:12px;margin-top:10px">Faixa: Alto a partir de 50% de chance, Atenção a partir de 25%. Todos os clientes ativos entram na fila; a faixa não limita quem é atendido. A variação compara a chance com a do mês anterior (▲ piorou, ▼ melhorou). Os filtros só escondem linhas: a posição é a da fila completa.</p>`;
+${l.length>v.length?`<div class="mais"><button class="btn sm" onclick="maisF()">Ver mais (${l.length-v.length})</button></div>`:''}`;
 }
 
 function abrir(pos){
@@ -300,7 +297,7 @@ function abrir(pos){
   const{pp,rel,k}=varData(c),h=c.historico||[];
   $('dw').innerHTML=`<div class="drw" role="dialog" aria-label="Cliente ${esc(c.cliente_id)}"><button class="btn ghost sm" style="float:right" onclick="fechar()" id="fx">Fechar</button>
 <h2>${esc(c.cliente_id)}</h2><p class="mut">${esc([c.segmento,c.plano,c.porte].join(' · '))}</p>
-<p style="margin-top:12px"><span class="bd ${c.faixa}">${FX[c.faixa]}</span> Posição ${c.posicao} · Score ${c.score} · chance de cancelar ${pc(c.probabilidade)} · ${brl(c.valor_mensal)}/mês</p>
+<p style="margin-top:12px">Posição ${c.posicao} · Score ${c.score} · chance de cancelar ${pc(c.probabilidade)} · ${brl(c.valor_mensal)}/mês</p>
 <p class="var-c ${k}" style="margin-top:8px"><span class="mut">Variação vs. mês anterior:</span> <b>${varSeta(k)} ${sg(Math.round(rel))}%</b> <small style="display:inline">${sg(pp)} p.p.</small></p>
 <p class="mut" style="margin-top:4px">Perda anual esperada ${brl(c.perda_anual_esperada)} · sinal desde ${esc(c.sinal_desde)} · contrato desde ${mesFmt(c.inicio_contrato)}</p>
 <h3>Evidências</h3>${c.motivos.map(o=>`<div class="ev"><b>${esc(o.titulo)}</b><br><small>${esc(o.comparacao?compTxt(o.comparacao):o.evidencia)}</small>${o.chave_serie?spark(h,o.chave_serie):''}</div>`).join('')||'<p class="mut">Nenhum sinal se destaca.</p>'}
@@ -316,20 +313,141 @@ function par(label,tk,ck,tv,cv){
   return`<div><label>${label}</label><div class="par"><select aria-label="${label}: tabela" onchange="setM('${tk}',this.value)">${opts(Object.keys(S.sheets),tv,'Tabela')}</select><select aria-label="${label}: coluna" onchange="setM('${ck}',this.value)" ${tv?'':'disabled'}>${opts(tv?colsOf(tv):[],cv,'Coluna')}</select></div></div>`;
 }
 function setM(k,v){
-  S.m[k]=v;
+  S.m[k]=v;S.analise=null;
   if(k=='tab')S.m.id='';
   if(k=='alvoTab')S.m.alvo='';
   if(k=='valTab')S.m.val='';
   render();
 }
-const marcar=v=>{cand().forEach(x=>S.sel[x.k]=v);render()};
-const setSel=(k,v)=>{S.sel[k]=v;render()};
+const marcar=v=>{cand().forEach(x=>S.sel[x.k]=v);S.analise=null;render()};
+const setSel=(k,v)=>{S.sel[k]=v;S.analise=null;render()};
 const setPeso=(el,k)=>{S.w[k]=+el.value;el.nextElementSibling.textContent=(+el.value).toFixed(2)};
+
+/* ---------- análise dos dados (calculada no navegador; mesma leitura do notebook de sinais) ---------- */
+/* Por métrica mensal: média móvel de 3 meses por cliente, alinhada em meses até a saída (cancelados: mês − mês da
+   saída; ativos: último mês da base + 1, então −1 é o último mês com dados nos dois grupos), e mediana e faixa
+   P25–P75 por grupo e mês. */
+const MESES_AN=12,JANELA_AN=3;
+const idxMes=i=>`${Math.floor(i/12)}-${String(i%12+1).padStart(2,'0')}`;
+function mesIdx(v){
+  if(v instanceof Date&&!isNaN(v)){const d=new Date(v.getTime()+432e5);return d.getUTCFullYear()*12+d.getUTCMonth()}
+  const t=String(v??'').trim();let m=t.match(/^(\d{4})[-\/](\d{1,2})/);if(m)return+m[1]*12+ +m[2]-1;
+  m=t.match(/^(\d{1,2})[-\/](\d{4})$/);return m?+m[2]*12+ +m[1]-1:null;
+}
+const quant=(s,p)=>{const i=(s.length-1)*p,a=Math.floor(i),b=Math.ceil(i);return s[a]+(s[b]-s[a])*(i-a)};
+const resumo=v=>{if(!v.length)return null;const s=[...v].sort((a,b)=>a-b);return{med:quant(s,.5),p25:quant(s,.25),p75:quant(s,.75),n:s.length}};
+/* AUC de cancelados × ativos (Mann-Whitney, empates pela média dos postos) */
+function auc(pos,neg){
+  if(!pos.length||!neg.length)return .5;
+  const t=[...pos.map(v=>[v,1]),...neg.map(v=>[v,0])].sort((a,b)=>a[0]-b[0]);let soma=0;
+  for(let i=0;i<t.length;){let j=i;while(j<t.length&&t[j][0]==t[i][0])j++;const r=(i+j+1)/2;for(let k=i;k<j;k++)if(t[k][1])soma+=r;i=j}
+  return(soma-pos.length*(pos.length+1)/2)/(pos.length*neg.length);
+}
+/* maior k tal que, de −k até −1, a mediana de quem cancelou fica fora da faixa P25–P75 dos ativos */
+function antecedencia(pontos){
+  let k=0;
+  for(let r=-1;r>=-MESES_AN;r--){const p=pontos[r+MESES_AN],c=p.c,a=p.a;if(!c||!a||!(c.med<a.p25||c.med>a.p75))break;k=-r}
+  return k||null;
+}
+/* nome legível da coluna: sem prefixo/sufixo técnico (pct → %, h → horas) e com as palavras comuns acentuadas */
+const PALAVRAS={criticos:'críticos',medio:'médio',resolucao:'resolução',reclamacoes:'reclamações',reunioes:'reuniões',nps:'NPS',sla:'SLA',
+  atendimento:'atendimento',servico:'serviço',servicos:'serviços',numero:'número',ultimo:'último',media:'média',historico:'histórico'};
+function rotuloSerie(c){
+  let w=c.split('_').filter(Boolean),un='';
+  if(w.includes('pct')){w=w.filter(x=>x!='pct');un=' (%)'}else if(w.length>1&&w.at(-1)=='h'){w.pop();un=' (h)'}
+  const t=w.map(x=>PALAVRAS[x.toLowerCase()]||x).join(' ')+un;return t[0].toUpperCase()+t.slice(1);
+}
+/* Ordem = relevância. Aqui é a separação (|AUC − 0,5| da média dos 3 últimos meses), o mesmo critério da pré-seleção
+   do motor; quando o front ler o pesos.json da API, trocar esta função pela ordem de importância do modelo. */
+const ordemRelevancia=ser=>[...ser].sort((a,b)=>Math.abs(b.auc-.5)-Math.abs(a.auc-.5));
+
+function analisar(){
+  const m=S.m,idn=norm(m.id),erro=t=>{S.analise={erro:t};render()};
+  if(m.alvoTipo!='data')return erro('Para comparar quem saiu com quem ficou é preciso a coluna com o mês da saída. Escolha-a em “O que prever”.');
+  const idAlvo=colsOf(m.alvoTab).find(c=>norm(c)===idn);if(!idAlvo)return erro('A tabela do cancelamento não tem a coluna do identificador.');
+  const saida=new Map();
+  for(const r of S.sheets[m.alvoTab]){const id=String(r[idAlvo]).trim(),v=r[m.alvo];if(v===''||v==null)saida.set(id,null);else{const i=mesIdx(v);if(i!=null)saida.set(id,i)}}
+  const cols=[];
+  for(const s of Object.keys(S.sheets)){
+    const idc=colsOf(s).find(c=>norm(c)===idn),mc=colsOf(s).find(c=>TEMPO.test(norm(c)));
+    if(!idc||!mc)continue;
+    for(const c of colsOf(s)){
+      const n=norm(c);if(c===idc||c===mc||LEAK.test(n)||TEMPO.test(n)||(s===m.alvoTab&&c===m.alvo)||!isSel(s+'|'+c))continue;
+      const vs=S.sheets[s].map(r=>r[c]).filter(v=>v!==''&&v!=null);
+      if(vs.length&&vs.filter(v=>typeof v=='number'&&isFinite(v)).length/vs.length>=.8)cols.push({s,c,idc,mc});
+    }
+  }
+  if(!cols.length)return erro('Nenhuma tabela mensal (com coluna de mês) e métricas numéricas para analisar.');
+  let maxMes=-Infinity;
+  for(const s of new Set(cols.map(x=>x.s))){const mc=cols.find(x=>x.s==s).mc,idc=cols.find(x=>x.s==s).idc;for(const r of S.sheets[s]){if(!saida.has(String(r[idc]).trim()))continue;const i=mesIdx(r[mc]);if(i!=null&&i>maxMes)maxMes=i}}
+  const canc=[...saida.values()].filter(v=>v!=null).length,ativ=saida.size-canc;
+  if(!canc||!ativ)return erro('É preciso ter clientes cancelados e ativos para comparar.');
+  const ser=[];
+  for(const {s,c,idc,mc} of cols){
+    const por=new Map();
+    for(const r of S.sheets[s]){
+      const id=String(r[idc]).trim(),v=r[c];if(!saida.has(id)||typeof v!='number'||!isFinite(v))continue;
+      const mi=mesIdx(r[mc]);if(mi==null)continue;
+      let a=por.get(id);if(!a)por.set(id,a=new Map());const x=a.get(mi)||[0,0];x[0]+=v;x[1]++;a.set(mi,x);
+    }
+    const g={c:Array.from({length:MESES_AN},()=>[]),a:Array.from({length:MESES_AN},()=>[])},fim={c:[],a:[]};
+    for(const [id,meses] of por){
+      const grp=saida.get(id)!=null?'c':'a',ref=saida.get(id)??maxMes+1,ms=[...meses.keys()].sort((x,y)=>x-y),
+        bruto=ms.map(k=>meses.get(k)[0]/meses.get(k)[1]),ult=[];
+      ms.forEach((k,i)=>{
+        const rel=k-ref;if(rel<-MESES_AN||rel>-1)return;
+        const j=bruto.slice(Math.max(0,i-JANELA_AN+1),i+1);g[grp][rel+MESES_AN].push(j.reduce((a,b)=>a+b,0)/j.length);
+        if(rel>=-JANELA_AN)ult.push(bruto[i]);
+      });
+      if(ult.length)fim[grp].push(ult.reduce((a,b)=>a+b,0)/ult.length);
+    }
+    const pontos=g.c.map((_,i)=>({rel:i-MESES_AN,c:resumo(g.c[i]),a:resumo(g.a[i])}));
+    if(!pontos.some(p=>p.c)||!pontos.some(p=>p.a))continue;
+    ser.push({k:s+'|'+c,rotulo:rotuloSerie(c),pontos,ant:antecedencia(pontos),auc:auc(fim.c,fim.a)});
+  }
+  if(!ser.length)return erro('As métricas não têm histórico suficiente nos 12 meses antes da saída.');
+  S.analise={series:ordemRelevancia(ser),canc,ativ,ref:idxMes(maxMes)};render();
+}
+
+const nfg=x=>x.toLocaleString('pt-BR',{maximumFractionDigits:2});
+function ticks(lo,hi,n=4){
+  if(lo==hi){lo-=1;hi+=1}
+  const raw=(hi-lo)/n,p=10**Math.floor(Math.log10(raw)),f=raw/p,st=(f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p,t=[];
+  for(let v=Math.floor(lo/st)*st;v<=Math.ceil(hi/st)*st+st/2;v+=st)t.push(+v.toFixed(10));return t;
+}
+/* um gráfico: mediana e faixa P25–P75 de cada grupo por mês até a saída; o fundo cinza marca os 3 meses finais */
+function grafico(sr){
+  const W=960,H=240,L=50,R=12,T=10,B=36,P=sr.pontos,tv=[];
+  P.forEach(p=>['c','a'].forEach(g=>{if(p[g])tv.push(p[g].p25,p[g].p75,p[g].med)}));
+  const tk=ticks(Math.min(...tv),Math.max(...tv)),lo=tk[0],hi=tk.at(-1),
+    X=r=>L+(r+MESES_AN+.5)/MESES_AN*(W-L-R),Y=v=>T+(1-(v-lo)/(hi-lo))*(H-T-B),f1=v=>v.toFixed(1);
+  const cor={c:'var(--hi)',a:'var(--lo)'},nome={c:'Cancelou',a:'Ativo'};
+  const runs=g=>{const o=[];let cur=[];P.forEach(p=>{if(p[g])cur.push(p);else if(cur.length){o.push(cur);cur=[]}});if(cur.length)o.push(cur);return o};
+  let svg=`<rect x="${f1(X(-3.5))}" y="${T}" width="${f1(X(-.5)-X(-3.5))}" height="${H-T-B}" fill="var(--edge)" opacity=".6"/>`;
+  svg+=tk.map(v=>`<line x1="${L}" x2="${W-R}" y1="${f1(Y(v))}" y2="${f1(Y(v))}" stroke="var(--line)"/><text x="${L-6}" y="${f1(Y(v)+4)}" text-anchor="end">${nfg(v)}</text>`).join('');
+  for(const g of ['a','c']){
+    for(const r of runs(g)){
+      svg+=`<polygon points="${r.map(p=>f1(X(p.rel))+','+f1(Y(p[g].p75))).join(' ')} ${[...r].reverse().map(p=>f1(X(p.rel))+','+f1(Y(p[g].p25))).join(' ')}" fill="${cor[g]}" opacity=".15"/>`;
+      svg+=`<polyline points="${r.map(p=>f1(X(p.rel))+','+f1(Y(p[g].med))).join(' ')}" fill="none" stroke="${cor[g]}" stroke-width="2" stroke-linejoin="round"/>`;
+    }
+    svg+=P.filter(p=>p[g]).map(p=>`<circle cx="${f1(X(p.rel))}" cy="${f1(Y(p[g].med))}" r="3" fill="${cor[g]}"><title>${nome[g]} · mês ${sg(p.rel)}: mediana ${nfg(p[g].med)} (P25–P75: ${nfg(p[g].p25)} a ${nfg(p[g].p75)}), ${p[g].n} clientes</title></circle>`).join('');
+  }
+  svg+=P.map(p=>`<text x="${f1(X(p.rel))}" y="${H-B+15}" text-anchor="middle">${sg(p.rel)}</text>`).join('');
+  svg+=`<text x="${(L+W-R)/2}" y="${H-4}" text-anchor="middle" style="font-size:12px">Meses até a saída (−1 = último mês com dados)</text>`;
+  const u=P.at(-1),desc=`${sr.rotulo}, mediana no mês −1: ${u.c?nfg(u.c.med):'sem dado'} entre os que cancelaram e ${u.a?nfg(u.a.med):'sem dado'} entre os ativos`;
+  return`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(desc)}">${svg}</svg>`;
+}
+function viewAnalise(a){
+  if(!a)return'';
+  if(a.erro)return`<p class="mut" style="margin-top:14px">${esc(a.erro)}</p>`;
+  return`<p class="sub mut" style="margin:14px 0 0">Cada métrica nos ${MESES_AN} meses antes da saída, com média móvel de ${JANELA_AN} meses por cliente. Ativos alinhados a ${esc(mesFmt(a.ref))}. “Separa desde”: a mediana de quem cancelou já fica fora da faixa P25–P75 dos ativos até o fim. Da mais para a menos relevante.</p>
+<div class="leg"><span><i style="border-color:var(--hi)"></i>Cancelou (mediana e faixa P25–P75) · ${a.canc} clientes</span><span><i style="border-color:var(--lo)"></i>Ativo (mediana e faixa P25–P75) · ${a.ativ} clientes</span><span><i class="cz"></i>3 meses finais</span></div>
+${a.series.map((sr,i)=>`<div class="ag"><h3>${i+1}. ${esc(sr.rotulo)} <span class="mut">· ${sr.ant?'separa desde o mês '+sg(-sr.ant):'não separa'}</span></h3>${grafico(sr)}</div>`).join('')}`;
+}
 
 function viewTreinar(){
   const head=`<div class="head"><h1>Modelos</h1></div>`;
-  const dados=`<div class="card ${S.sheets?'ok':''}"><h2><span class="n">1</span>Dados</h2><p class="sub mut">Um .xlsx com várias abas ou um .csv. Cada tabela precisa ter a coluna que identifica o cliente.</p>
-<div class="drop" tabindex="0" role="button" onclick="$('fi').click()" onkeydown="if(event.key=='Enter'||event.key==' '){event.preventDefault();$('fi').click()}" ondragover="event.preventDefault()" ondrop="event.preventDefault();load(event.dataTransfer.files[0])"><input id="fi" type="file" accept=".xlsx,.xls,.csv" hidden onchange="load(this.files[0])"><b>Clique ou arraste o arquivo aqui</b><p class="mut">${S.file?esc(S.file):'Nenhum arquivo selecionado'}</p></div>
+  const dados=`<div class="card ${S.sheets?'ok':''}"><h2><span class="n">1</span>Dados</h2><div class="drop" tabindex="0" role="button" onclick="$('fi').click()" onkeydown="if(event.key=='Enter'||event.key==' '){event.preventDefault();$('fi').click()}" ondragover="event.preventDefault()" ondrop="event.preventDefault();load(event.dataTransfer.files[0])"><input id="fi" type="file" accept=".xlsx,.xls,.csv" hidden onchange="load(this.files[0])"><b>Clique ou arraste um csv/xlsx</b><p class="mut">${S.file?esc(S.file):'Nenhum arquivo selecionado'}</p></div>
 <p style="margin-top:10px"><a href="#/modelos" onclick="setData(demo(),'dados_demonstracao.xlsx');return false">ou usar dados de demonstração</a></p>
 ${S.sheets?`<div class="tabs">${Object.entries(S.sheets).map(([n,r])=>`<span class="chip">${esc(n)} · ${r.length} linhas · ${colsOf(n).length} colunas</span>`).join('')}</div>`:''}</div>`;
   if(!S.sheets)return head+dados;
@@ -339,6 +457,8 @@ ${par('Tabela de clientes e coluna do identificador','tab','id',m.tab,m.id)}
 ${par('Coluna que será prevista (cancelamento)','alvoTab','alvo',m.alvoTab,m.alvo)}
 <div><label>O que essa coluna guarda</label><select aria-label="Tipo da coluna prevista" onchange="setM('alvoTipo',this.value)"><option value="data" ${m.alvoTipo=='data'?'selected':''}>Data de saída (vazia se o cliente continua)</option><option value="situacao" ${m.alvoTipo=='situacao'?'selected':''}>Situação (ativo / cancelado)</option></select></div>
 ${par('Valor do contrato (opcional, define a prioridade)','valTab','val',m.valTab,m.val)}</div></div>`;
+  const pronto=m.tab&&m.id&&m.alvoTab&&m.alvo;
+  const analise=`<div class="card"><h2>Análise dos dados</h2><div style="margin-top:12px;display:flex;gap:8px"><button class="btn" onclick="analisar()" ${pronto?'':'disabled title="Escolha a tabela de clientes, o identificador e a coluna de cancelamento."'}>Analisar dados</button>${S.analise?'<button class="btn ghost" onclick="S.analise=null;render()">Ocultar</button>':''}</div>${viewAnalise(S.analise)}</div>`;
   const c=cand(),grp={};c.forEach(x=>(grp[x.s]??=[]).push(x));
   const kq=x=>esc(JSON.stringify(x.k));
   const pesos=`<div class="card"><h2><span class="n">3</span>Variáveis e pesos</h2><p class="sub mut">Todas as outras colunas são candidatas. As colunas do cancelamento nunca entram, para o modelo não “colar” a resposta.</p>
@@ -349,13 +469,13 @@ ${Object.entries(grp).map(([s,l])=>`<div class="vgrp"><h3>${esc(s)}</h3>${l.map(
   let fim;
   if(S.treino){const p=S.treino.passo;fim=`<div class="card" style="text-align:center" role="status"><h2 style="justify-content:center">Treinando o modelo</h2><div class="ring"></div><p class="mut">${PASSOS[Math.min(p,PASSOS.length-1)]}…</p><div class="bar" style="margin-top:12px"><i style="width:${p/PASSOS.length*100}%"></i></div></div>`}
   else fim=`<div class="card ${S.treinado?'ok':''}"><h2><span class="n">4</span>Treinar</h2>${S.treinado?`<p class="sub mut">Modelo treinado em ${S.treinado.quando} com ${S.treinado.vars} variáveis (simulado). A fila continua sendo a de demonstração.</p><a class="btn" href="#/ranking" style="display:inline-block;text-decoration:none">Ver a fila</a> `:'<p class="sub mut">Confirme o mapeamento e os pesos acima.</p>'}<button class="btn ${S.treinado?'ghost':''}" onclick="treinar()">${S.treinado?'Treinar de novo':'Treinar modelo'}</button></div>`;
-  return head+dados+mapa+pesos+fim;
+  return head+dados+mapa+analise+pesos+fim;
 }
 
 function render(){
   const r=rota();
   document.querySelectorAll('.side nav a').forEach(a=>a.id=='n-'+r?a.setAttribute('aria-current','page'):a.removeAttribute('aria-current'));
-  $('modelo').innerHTML=S.treinado?`<b>Modelo treinado</b>${S.treinado.quando} · ${S.treinado.vars} variáveis`:'<b>Nenhum modelo treinado</b>A fila mostra dados de demonstração.';
+  $('modelo').innerHTML=S.treinado?`<b>Modelo treinado</b>${S.treinado.quando} · ${S.treinado.vars} variáveis`:'';
   $('mn').className='main'+(r=='modelos'?' estreito':'');
   $('mn').innerHTML=r=='modelos'?viewTreinar():viewRanking();
   if(r=='ranking'&&S.rank)pintarFila();

@@ -7,7 +7,7 @@ Uso:
 Tudo o que é específico da INOVAAPPS fica aqui (e só aqui):
 * tabela de clientes `clientes` (ID `cliente_id`); alvo em `situacao_clientes`: situacao == "Cancelado",
   mês da saída em `mes_cancelamento` (a tabela inteira fica fora das variáveis);
-* valor do contrato `clientes.valor_mensal` → prioridade = probabilidade × valor_mensal × 12;
+* valor do contrato `clientes.valor_mensal` → prioridade = (probabilidade + piora no último mês) × valor_mensal × 12;
 * nomes legíveis das colunas (`dados.ROTULOS`), acentos de segmento/porte/plano e o dicionário de ações.
 Variáveis, pesos, limiares, direções de risco e cortes das faixas são aprendidos pelo motor.
 """

@@ -83,8 +83,8 @@ def test_inova_lightgbm_forcado(forcado):
         json.dumps(obj, allow_nan=False)
     cl = r.clientes["clientes"]
     assert len(cl) == 58 and [x["prioridade"] for x in cl] == list(range(1, 59))
-    perdas = [x["perda_anual_esperada"] for x in cl]
-    assert perdas == sorted(perdas, reverse=True)
+    ajustadas = [x["perda_anual_ajustada"] for x in cl]
+    assert ajustadas == sorted(ajustadas, reverse=True)
     assert {x["faixa_risco"] for x in cl} <= {"alto", "atencao", "baixo"}
     assert all(v["coef"] is None and v["importancia"] is not None for v in r.clientes["modelo"]["variaveis"])
     assert r.validacao["C"] is None and r.pesos["resumo"]["calibracao"]["a"] > 0

@@ -22,8 +22,12 @@ resumo      {clientes_ativos, em_risco (alto+atenção), em_risco_alto, em_atenc
 clientes[]  (todos os ativos, na ordem da fila)
   cliente_id, atributos {coluna categórica da tabela de clientes: valor}, valor_mensal (null sem valor),
   situacao "Ativo", risco (probabilidade de cancelar nos próximos H meses), faixa_risco ("alto"|"atencao"|"baixo"),
-  prioridade (1..N, única e contínua; ordem = perda_anual_esperada desc, sem valor = risco desc),
-  perda_anual_esperada (risco × valor_mensal × 12; null sem valor), meses_em_alerta (meses seguidos até o mês
+  prioridade (1..N, única e contínua; ordem = perda_anual_ajustada desc, sem valor = risco_ajustado desc),
+  perda_anual_esperada (risco × valor_mensal × 12; null sem valor; é a perda real esperada, soma em `resumo`),
+  delta_risco (risco de hoje − risco do mês anterior, mesmo modelo; null sem mês anterior pontuado; sempre enviado,
+               mesmo com o delta fora do modelo), risco_ajustado (min(risco + máx(delta_risco, 0), 1); igual a
+               `risco` com Config.delta_na_fila=False), perda_anual_ajustada (risco_ajustado × valor_mensal × 12;
+               é a chave da fila; null sem valor). A faixa vem de `risco`, não do ajustado. meses_em_alerta (meses seguidos até o mês
   de referência com risco ≥ corte de atenção),
   evidencias[] / fatores_secundarios[]: {sinal (id da variável), coluna, tabela, titulo, detalhe, peso,
       contribuicao, valor, limiar,
@@ -132,6 +136,13 @@ def _mes(p) -> str | None:
 
 
 # --------------------------------------------------------------------------- clientes.json
+def _formula_prioridade(tem_valor: bool, delta_na_fila: bool) -> str:
+    risco = "risco ajustado (risco + aumento do risco no último mês)" if delta_na_fila else "risco"
+    if not tem_valor:
+        return f"{risco} (sem coluna de valor do contrato)"
+    return f"{risco} × valor_mensal × 12" + (" (perda anual ajustada)" if delta_na_fila else " (perda anual esperada)")
+
+
 def _series(r) -> list[dict]:
     """Colunas de origem (temporais) das variáveis do modelo, para o histórico de cada cliente."""
     vistos, out = set(), []
@@ -217,6 +228,8 @@ def clientes_json(r, gerado: str) -> dict:
             "situacao": "Ativo", "risco": round(float(f["probabilidade"]), 4), "faixa_risco": str(f["faixa_risco"]),
             "prioridade": int(f["prioridade"]),
             "perda_anual_esperada": limpo(f["perda_anual_esperada"], 2) if tem_valor else None,
+            "delta_risco": limpo(f["delta_risco"], 4), "risco_ajustado": limpo(f["risco_ajustado"], 4),
+            "perda_anual_ajustada": limpo(f["perda_anual_ajustada"], 2) if tem_valor else None,
             "meses_em_alerta": int(f["meses_em_alerta"]),
             "evidencias": [_item(x, meta, chaves, h) for x in e[e["dispara"]].itertuples()],
             "fatores_secundarios": [_item(x, meta, chaves, h) for x in e[e["secundario"]].itertuples()],
@@ -243,8 +256,7 @@ def clientes_json(r, gerado: str) -> dict:
             "tipo": TIPO_MODELO[r.modelo.nome],
             "horizonte_meses": int(m.horizonte_meses),
             "cortes": {"alto": r.cortes["alto"], "atencao": r.cortes["atencao"]},
-            "formula_prioridade": ("risco × valor_mensal × 12 (perda anual esperada)" if tem_valor
-                                   else "risco (sem coluna de valor do contrato)"),
+            "formula_prioridade": _formula_prioridade(tem_valor, r.config.delta_na_fila),
             "coluna_valor": {"tabela": m.valor_tabela or m.tabela_clientes, "coluna": m.coluna_valor} if tem_valor else None,
             "variaveis": variaveis,
             "series_historico": series,

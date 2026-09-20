@@ -96,7 +96,7 @@ class Opcoes(BaseModel):
     min_hist: int | None = Field(None, ge=1, le=36, description="Mínimo de meses com dados para a linha treinar.")
     delta_risco: bool = Field(
         False,
-        description="Opção avançada, desligada por padrão. Motor em dois estágios: acrescenta a candidata "
+        description="Opção avançada, desligada por padrão. Só o modelo: o delta ordena a fila e vai no JSON de qualquer jeito. Motor em dois estágios: acrescenta a candidata "
                     "'risco de hoje − risco do mês passado'. Testado nas bases INOVAAPPS e redes: não melhora o "
                     "acerto (um braço placebo com o delta embaralhado entrega o mesmo ganho) e custa 3,2× o tempo "
                     "de treino; mantido como opção avançada.")
@@ -269,7 +269,7 @@ class PaginaClientes(Aberto):
     desde: int = 0
     limite: int = 0
     clientes: list[dict[str, Any]] = Field(default_factory=list,
-                                           description="Na ordem da fila (perda anual esperada); nunca reordenados.")
+                                           description="Na ordem da fila (perda anual ajustada pelo delta de risco); nunca reordenados.")
 
 
 class Saude(Aberto):

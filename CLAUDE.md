@@ -53,8 +53,10 @@ O ambiente Python usa **uv** (`uv sync`, `uv run ...`). Não existe banco de dad
 - Foi a primeira base real em que as árvores ficaram elegíveis: o **LightGBM venceu** a logística por mais de 1 erro-padrão.
 - O valor do contrato é o gasto mensal médio antes da saída: serve só para a fila e entra em `colunas_ignoradas`.
 
-### Delta de risco: testado e descartado
-`risco do mês − risco do mês anterior` como variável (`motor/delta.py`, `Config.delta_risco`, padrão `False`). Medido nas duas bases: **não melhora o acerto** — um braço placebo, com o delta embaralhado, entrega o mesmo ganho — e custa **3,2× o tempo de treino**. Fica como opção avançada desligada; a API aceita, o front não mostra. Resultados em `dados/amostra_redes/resultado/delta/`, script em `experimentos/delta_risco.py`.
+### Delta de risco: fora do modelo, dentro da fila
+**Na fila (padrão ligado)**: o delta do risco do modelo final ordena a fila (ver Convenções); não treina nada. Faixas continuam vindo do risco `p`. No experimento, ordenar assim (braço C) deixou a captura dos cancelados no topo da fila praticamente igual (top 100: 82 contra 84 cancelados; top 20: 16 contra 15), sem direção clara; a escolha é de urgência (quem piorou vai na frente), não de acerto.
+
+**Como variável do modelo: testado e descartado.** `risco do mês − risco do mês anterior` como variável (`motor/delta.py`, `Config.delta_risco`, padrão `False`). Medido nas duas bases: **não melhora o acerto** — um braço placebo, com o delta embaralhado, entrega o mesmo ganho — e custa **3,2× o tempo de treino**. Fica como opção avançada desligada; a API aceita, o front não mostra. Resultados em `dados/amostra_redes/resultado/delta/`, script em `experimentos/delta_risco.py`.
 
 ## Especialistas (`.claude/agents/`)
 - `analista-dados`: EDA, motor genérico (variáveis, seleção supervisionada, score) e validação com histórico.
@@ -67,6 +69,6 @@ O ambiente Python usa **uv** (`uv sync`, `uv run ...`). Não existe banco de dad
 - Todo o produto fica em **português (pt-BR)**: interface, nomes de colunas e de campos do JSON. Valores usam `R$ 12.345` e datas usam `jun/2026`.
 - Cores de status fixas em todo o projeto: **Cancelou/risco alto = vermelho**, **atenção = âmbar**, **ativo/saudável = azul-acinzentado**.
 - Notebooks têm quase nenhum texto. Os gráficos precisam se explicar sozinhos, com título descritivo, eixos nomeados e legenda.
-- **Fila** (`motor/`): ordenada **só pela perda anual esperada** (probabilidade × valor do contrato × 12; sem coluna de valor, só a probabilidade) — decisão do time; o frontend não reordena por faixa. Faixas (alto/atencao/baixo) vêm de cortes de probabilidade, **nunca** de limite de capacidade da equipe; todos os ativos entram na fila. A tela deve mostrar a faixa ao lado da posição.
+- **Fila** (`motor/`): ordenada pela **perda anual ajustada pelo delta** = `min(p + máx(Δp, 0), 1) × valor do contrato × 12`, onde Δp é o risco do mês de referência menos o do mês anterior (quem piorou é mais urgente; queda não rebaixa). Sem coluna de valor, só `min(p + máx(Δp, 0), 1)`. `Config.delta_na_fila=False` volta à ordem por `p × valor × 12`. O delta vai sempre no JSON (`delta_risco`, `risco_ajustado`, `perda_anual_ajustada`), com o delta fora do modelo. A `perda_anual_esperada` (`p × valor × 12`) continua no JSON e é a que soma no resumo — decisão do time; o frontend não reordena por faixa. Faixas (alto/atencao/baixo) vêm de cortes de probabilidade, **nunca** de limite de capacidade da equipe; todos os ativos entram na fila. A tela deve mostrar a faixa ao lado da posição.
 - A pasta `frontend/` na raiz veio de fora deste trabalho: **ignorar**. O app oficial é `web/`.
 - **A IA não faz conferência visual**: não renderiza gráficos em PNG (kaleido etc.), não tira screenshots e não abre navegador para conferir telas. A verificação é só executar o código sem erros e checar os números; a revisão visual fica com o time.

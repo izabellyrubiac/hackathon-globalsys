@@ -51,7 +51,9 @@ class Config:
     taxa_aprendizado: float = 0.05
     folhas: int = 15                 # num_leaves
     min_linhas_folha: int = 20       # min_data_in_leaf
-    # delta de risco (motor em dois estágios — ver motor/delta.py)
+    # delta de risco na fila: quem subiu de risco no último mês passa na frente (ver motor/delta.py)
+    delta_na_fila: bool = True       # ordena por min(p + máx(Δp, 0), 1) × valor × 12; False = por p × valor × 12
+    # delta de risco como candidata (motor em dois estágios — ver motor/delta.py)
     delta_risco: bool = False        # True: acrescenta a candidata "risco de hoje − risco do mês passado"
     delta_risco_3m: bool = True      # … e também "risco de hoje − média dos 3 meses anteriores"
     delta_dobras: int = 5            # estágio 1 cross-fit por cliente nas linhas de treino (0 = sem cross-fit)

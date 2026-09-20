@@ -336,7 +336,7 @@ HIST = Query(True, description="False deixa a resposta bem menor.")
          tags=["resultados"], summary="Fila de clientes de uma execução (paginada, na ordem do motor)")
 def clientes_execucao(base_id: str, execucao_id: str, limite: int = LIMITE, desde: int = DESDE,
                       faixa: list[str] | None = FAIXA, incluir_historico: bool = HIST):
-    """A ordem é a do motor (perda anual esperada) e **nunca** é refeita aqui: filtrar não reordena."""
+    """A ordem é a do motor (perda anual ajustada pelo delta de risco) e **nunca** é refeita aqui: filtrar não reordena."""
     arm.exigir_execucao(base_id, execucao_id)
     return _clientes(base_id, execucao_id, limite, desde, faixa, incluir_historico)
 

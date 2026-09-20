@@ -29,6 +29,9 @@ Você é o engenheiro de dados do projeto INOVAAPPS 2026. Leia `CLAUDE.md` para 
       "risco": 0.72,
       "faixa_risco": "alto",
       "prioridade": 1,
+      "delta_risco": 0.08,
+      "risco_ajustado": 0.80,
+      "perda_anual_ajustada": 94080,
       "evidencias": [
         { "sinal": "uso_plataforma_pct", "titulo": "Uso da plataforma caiu", "detalhe": "de 82% para 51% em 3 meses", "peso": 0.3 }
       ],
@@ -41,7 +44,7 @@ Você é o engenheiro de dados do projeto INOVAAPPS 2026. Leia `CLAUDE.md` para 
 }
 ```
 - `faixa_risco` aceita apenas `"alto" | "atencao" | "baixo"`.
-- `prioridade` começa em 1 e vem da ordem da fila (risco × valor).
+- `prioridade` começa em 1 e vem da ordem da fila: `perda_anual_ajustada` = `risco_ajustado × valor × 12`, com `risco_ajustado = min(risco + máx(delta_risco, 0), 1)`. `delta_risco` = risco de hoje − risco do mês anterior (null sem mês anterior); é enviado mesmo com o delta fora do modelo. A faixa vem de `risco`.
 - Um JSON separado para a validação (`validacao.json`: detecção dos 22 cancelados, antecedência e alarmes falsos) pode ser adicionado quando o score existir.
 
 ## Regras

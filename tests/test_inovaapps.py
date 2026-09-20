@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 
 import numpy as np
+import pytest
 
 
 def test_leitura_ignora_documentacao(tabelas_inova):
@@ -37,8 +38,8 @@ def test_fila_e_contrato(inova):
     cl = c["clientes"]
     assert len(cl) == 58 == c["resumo"]["clientes_ativos"]
     assert [x["prioridade"] for x in cl] == list(range(1, 59))
-    perdas = [x["perda_anual_esperada"] for x in cl]
-    assert perdas == sorted(perdas, reverse=True)
+    ajustadas = [x["perda_anual_ajustada"] for x in cl]
+    assert ajustadas == sorted(ajustadas, reverse=True)      # a fila é ordenada pela perda ajustada pelo delta
     assert all(abs(x["perda_anual_esperada"] - x["risco"] * x["valor_mensal"] * 12) <= 6e-5 * x["valor_mensal"] * 12
                for x in cl)          # risco sai arredondado em 4 casas
     assert {x["faixa_risco"] for x in cl} <= {"alto", "atencao", "baixo"}
@@ -89,3 +90,36 @@ def test_deterministico(tabelas_inova, inova):
     for f in set(r2.modelo.features) - set(r.modelo.features):
         assert r.oof.modelos["logistica"].frequencia_dobras().get(f, 0.0) < 0.5, f
     np.testing.assert_allclose(r2.modelo.prob(r2.X.loc[r2.fila["linha"]]), r2.fila["probabilidade"], atol=1e-12)
+
+
+def test_delta_na_fila(inova):
+    """O delta vai no JSON (o modelo não o usa) e é a piora do risco no último mês, igual ao histórico."""
+    _, _, r = inova
+    assert not any(v["id"].startswith("risco_previsto") for v in r.clientes["modelo"]["variaveis"])
+    cl = r.clientes["clientes"]
+    com_delta = [x for x in cl if x["delta_risco"] is not None]
+    assert len(com_delta) > 0.9 * len(cl)                       # só o 1º mês do cliente ficaria sem delta
+    for x in cl:
+        h = x["historico"]
+        if x["delta_risco"] is not None:
+            assert x["delta_risco"] == pytest.approx(h[-1]["risco"] - h[-2]["risco"], abs=2e-4)
+        aj = min(x["risco"] + max(x["delta_risco"] or 0.0, 0.0), 1.0)
+        assert x["risco_ajustado"] == pytest.approx(aj, abs=3e-4)
+        assert x["perda_anual_ajustada"] == pytest.approx(x["risco_ajustado"] * x["valor_mensal"] * 12,
+                                                             abs=6e-5 * x["valor_mensal"] * 12)   # risco em 4 casas
+        assert x["risco_ajustado"] >= x["risco"] - 1e-9         # queda de risco nunca rebaixa na fila
+    assert any(x["delta_risco"] and x["delta_risco"] > 0 for x in cl)
+    assert any(x["delta_risco"] and x["delta_risco"] < 0 for x in cl)
+    assert r.clientes["modelo"]["formula_prioridade"].startswith("risco ajustado")
+
+
+def test_sem_delta_na_fila_ordena_pela_perda_esperada(tabelas_inova):
+    """`delta_na_fila=False` volta à ordem por risco × valor; o delta continua sendo enviado."""
+    from motor import Config, Mapeamento, inspecionar, treinar
+    m = Mapeamento.de_sugestao(inspecionar(tabelas_inova))
+    r = treinar(tabelas_inova, m, gerado_em="2026-01-01", config=Config(delta_na_fila=False, validar=False))
+    cl = r.clientes["clientes"]
+    perdas = [x["perda_anual_esperada"] for x in cl]
+    assert perdas == sorted(perdas, reverse=True)
+    assert all(x["risco_ajustado"] == x["risco"] for x in cl) and any(x["delta_risco"] is not None for x in cl)
+    assert r.clientes["modelo"]["formula_prioridade"].endswith("(perda anual esperada)")

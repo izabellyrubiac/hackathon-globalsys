@@ -41,7 +41,8 @@ uv run jupyter lab                        # notebooks em experimentos/inovaapps/
 4. **Modelo.** Logística, Random Forest ou LightGBM. A escolha é automática, pelo menor log-loss fora da
    amostra nas mesmas dobras; em empate técnico fica o mais simples. As árvores só entram com base grande
    (≥ 200 meses-cliente positivos e ≥ 50 cancelados).
-5. **Fila.** Ordenada **só** pela perda anual esperada (probabilidade × valor × 12). As faixas
+5. **Fila.** Ordenada pela perda anual **ajustada pelo delta**: `min(p + máx(Δp, 0), 1) × valor × 12`, com Δp = risco de
+   hoje − risco do mês anterior (quem piorou passa na frente). As faixas
    alto/atenção/baixo vêm de cortes de probabilidade, nunca de capacidade da equipe.
 6. **Explicação.** A contribuição de cada variável no próprio modelo; ela "dispara" quando a contribuição
    é positiva e o valor passa do limiar aprendido.
@@ -62,7 +63,10 @@ exportação, incompleto, fica de fora. Pela regra, a base das redes fica com 2.
 cancelados e 1.070 ativos — e foi a primeira vez que as árvores ficaram elegíveis com dados reais: o
 **LightGBM venceu** a logística por mais de um erro-padrão.
 
-## Experimento do delta de risco (testado e descartado)
+## Delta de risco
+
+O delta **ordena a fila** (padrão `Config.delta_na_fila = True`) e vai no JSON de cada cliente (`delta_risco`,
+`risco_ajustado`, `perda_anual_ajustada`), sem entrar no modelo. Como **variável do modelo** ele foi testado e descartado:
 
 Pergunta: acrescentar o delta do próprio risco previsto (`risco do mês − risco do mês anterior`) melhora o
 acerto? Resposta medida: **não**.
@@ -71,7 +75,7 @@ acerto? Resposta medida: **não**.
 - Com o histórico mínimo padrão, o motor descartou o delta sozinho em todas as dobras.
 - Ligá-lo custa **3,2× o tempo de treino**.
 
-O código continua em `motor/delta.py`, desligado (`Config.delta_risco = False`), e a API aceita a opção
+O código do modelo em dois estágios continua em `motor/delta.py`, desligado (`Config.delta_risco = False`), e a API aceita a opção
 como avançada. Resultados em `dados/amostra_redes/resultado/delta/` e script em
 `experimentos/delta_risco.py`.
 

@@ -33,8 +33,8 @@ def verificar(r) -> None:
     assert all(c["faixa_risco"] in ("alto", "atencao", "baixo") for c in cl)
     assert all(0 <= c["risco"] <= 1 for c in cl)
     assert all(c["evidencias"] for c in cl if c["faixa_risco"] == "alto"), "cliente alto sem evidência"
-    perdas = [c["perda_anual_esperada"] for c in cl]
-    assert perdas == sorted(perdas, reverse=True), "fila fora da ordem de perda anual esperada"
+    perdas = [c["perda_anual_ajustada"] for c in cl]
+    assert perdas == sorted(perdas, reverse=True), "fila fora da ordem de perda anual ajustada pelo delta"
     for obj in (r.clientes, r.validacao, r.pesos):
         json.dumps(obj, allow_nan=False)          # falha se sobrou NaN/inf
 
