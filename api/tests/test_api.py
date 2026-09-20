@@ -235,6 +235,21 @@ def test_clientes_paginado_e_em_ordem(cliente, treinada):
     assert "historico" in tudo["clientes"][0]
 
 
+def test_evidencias_trazem_comparacao_e_serie(cliente, treinada):
+    """Cada evidência aponta a série mensal e traz "últimos 3 meses × 6 anteriores", mesmo sem o histórico."""
+    doc = cliente.get(f"/api/bases/{treinada}/clientes?limite=5000&incluir_historico=false").json()
+    chaves = {s["chave"] for s in doc["modelo"]["series_historico"]}
+    itens = [e for c in doc["clientes"] for e in c["evidencias"] + c["fatores_secundarios"]]
+    assert itens and all("chave_serie" in e and "comparacao" in e for e in itens)
+    comparados = [e for e in itens if e["comparacao"]]
+    assert comparados
+    for e in comparados:
+        cmp = e["comparacao"]
+        assert cmp["chave"] == e["chave_serie"] in chaves
+        assert 1 <= cmp["meses_recente"] <= 3 and 1 <= cmp["meses_anterior"] <= 6
+        assert cmp["recente"] is not None and cmp["anterior"] is not None
+
+
 def test_clientes_filtro_por_faixa_nao_reordena(cliente, treinada):
     tudo = cliente.get(f"/api/bases/{treinada}/clientes?limite=5000").json()["clientes"]
     r = cliente.get(f"/api/bases/{treinada}/clientes?limite=5000&faixa=alto&faixa=atencao").json()

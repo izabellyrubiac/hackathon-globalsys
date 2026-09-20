@@ -26,7 +26,13 @@ clientes[]  (todos os ativos, na ordem da fila)
   perda_anual_esperada (risco × valor_mensal × 12; null sem valor), meses_em_alerta (meses seguidos até o mês
   de referência com risco ≥ corte de atenção),
   evidencias[] / fatores_secundarios[]: {sinal (id da variável), coluna, tabela, titulo, detalhe, peso,
-      contribuicao, valor, limiar}
+      contribuicao, valor, limiar,
+      chave_serie (chave em modelo.series_historico / historico[].valores; null se a variável não vem de uma
+                   série mensal numérica),
+      comparacao {chave, recente, anterior, meses_recente, meses_anterior} | null}
+      comparacao = média mensal dos últimos 3 meses com dado × média dos 6 meses com dado anteriores a esses
+      (meses_* = quantos meses entraram de fato; null sem os dois lados ou no modo fotografia). É independente
+      de `historico`, então continua valendo com `incluir_historico=false` na API.
   acao_sugerida, sinal_dominante (id da variável ou null), coluna_dominante
   historico[] {mes_ref, risco (modelo final, só com dados até o mês), valores {chave da série: valor}}
 
@@ -158,16 +164,33 @@ def _valores_mensais(r, series: list[dict]) -> dict[str, pd.Series]:
     return out
 
 
-def _item(e, meta) -> dict:
+JANELA_RECENTE, JANELA_ANTERIOR = 3, 6   # meses da comparação "últimos 3 × 6 anteriores" de cada evidência
+
+
+def _comparacao(h: list[dict], chave: str) -> dict | None:
+    """Média dos últimos JANELA_RECENTE meses com dado × média dos JANELA_ANTERIOR anteriores (só séries numéricas)."""
+    v = [x["valores"].get(chave) for x in h]
+    v = [x for x in v if isinstance(x, (int, float)) and not isinstance(x, bool)]
+    rec, ant = v[-JANELA_RECENTE:], v[-(JANELA_RECENTE + JANELA_ANTERIOR):-JANELA_RECENTE]
+    if not rec or not ant:
+        return None
+    return {"chave": chave, "recente": limpo(sum(rec) / len(rec), 2), "anterior": limpo(sum(ant) / len(ant), 2),
+            "meses_recente": len(rec), "meses_anterior": len(ant)}
+
+
+def _item(e, meta, chaves: dict, h: list[dict]) -> dict:
     v = meta[e.variavel]
+    chave = chaves.get((v.tabela, v.coluna))
     return {"sinal": e.variavel, "coluna": v.coluna, "tabela": v.tabela, "titulo": e.titulo, "detalhe": e.detalhe,
             "peso": round(float(e.peso), 3), "contribuicao": round(float(e.contribuicao), 3),
-            "valor": limpo(e.valor, 2), "limiar": limpo(e.limiar, 4)}
+            "valor": limpo(e.valor, 2), "limiar": limpo(e.limiar, 4), "chave_serie": chave,
+            "comparacao": _comparacao(h, chave) if chave and h else None}
 
 
 def clientes_json(r, gerado: str) -> dict:
     F, E, P, meta = r.fila, r.explicacao, r.painel, r.meta
     series = _series(r)
+    chaves = {(s["tabela"], s["coluna"]): s["chave"] for s in series if s["tipo"] == "numerica"}
     vals = _valores_mensais(r, series)
     tem_valor = r.base.valor is not None
     hist = P[P["tem_dados"]].sort_values(["cliente", "mes"])
@@ -195,8 +218,8 @@ def clientes_json(r, gerado: str) -> dict:
             "prioridade": int(f["prioridade"]),
             "perda_anual_esperada": limpo(f["perda_anual_esperada"], 2) if tem_valor else None,
             "meses_em_alerta": int(f["meses_em_alerta"]),
-            "evidencias": [_item(x, meta) for x in e[e["dispara"]].itertuples()],
-            "fatores_secundarios": [_item(x, meta) for x in e[e["secundario"]].itertuples()],
+            "evidencias": [_item(x, meta, chaves, h) for x in e[e["dispara"]].itertuples()],
+            "fatores_secundarios": [_item(x, meta, chaves, h) for x in e[e["secundario"]].itertuples()],
             "acao_sugerida": f["acao_sugerida"],
             "sinal_dominante": dom if isinstance(dom, str) else None,
             "coluna_dominante": meta[dom].coluna if isinstance(dom, str) else None,

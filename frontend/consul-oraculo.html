@@ -20,7 +20,7 @@ p{margin:0}a{color:var(--pri)}.mut{color:var(--mut)}small{font-size:12px}
 .side nav a:hover{background:var(--soft)}.side nav a[aria-current="page"]{background:var(--pri);color:#fff}
 .modelo{margin-top:auto;padding:12px 14px;border-radius:14px;background:var(--soft);font-size:13px}
 .modelo b{display:block;margin-bottom:2px}
-.main{padding:28px 32px 48px;min-width:0;max-width:1180px;width:100%;margin:0 auto}
+.main{padding:28px 32px 48px;min-width:0;width:100%}.main.estreito{max-width:1180px;margin:0 auto}
 .head{margin-bottom:20px}.head p{margin-top:6px;max-width:680px}
 
 /* componentes */
@@ -59,6 +59,7 @@ tr.r{cursor:pointer}tr.r:hover,tr.r:focus-visible{background:var(--soft)}
 .pos{display:flex;align-items:center;gap:8px;white-space:nowrap}.pos b{font-size:18px;min-width:26px}
 .bd{padding:2px 10px;border-radius:99px;font-weight:600;font-size:12px;color:#fff}.bd.alto{background:var(--hi)}.bd.atencao{background:var(--md)}.bd.baixo{background:var(--lo)}
 .num{white-space:nowrap;font-variant-numeric:tabular-nums}
+td small{white-space:nowrap}
 .fila{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:18px;align-items:start}
 .fila>.card{margin-bottom:0}
 .cab{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:10px}.cab span{font-size:13px}
@@ -75,6 +76,7 @@ tr.r{cursor:pointer}tr.r:hover,tr.r:focus-visible{background:var(--soft)}
 .mais{text-align:center;margin-top:14px}
 .drw{position:fixed;top:0;right:0;bottom:0;width:min(440px,100%);background:var(--drw);border-left:1px solid var(--edge);padding:24px;overflow:auto;z-index:9;box-shadow:-8px 0 30px #0002}
 .ev{padding:10px 12px;border-radius:12px;background:var(--soft);margin:8px 0}
+.spark{display:block;width:100%;height:auto;margin-top:8px}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1f2430;color:#fff;padding:10px 18px;border-radius:10px;z-index:20}
 
 @media(max-width:1000px){.fila{grid-template-columns:1fr}.filtros{position:static;order:-1}}
@@ -116,6 +118,8 @@ const S={
 /* ---------- ranking (mock do backend) ---------- */
 /* O backend vai devolver a fila já ordenada pela perda anual esperada (probabilidade × valor × 12).
    Troque `api.ranking` por um fetch quando a API existir; a tela não reordena nada. */
+/* chave da série em `modelo.series_historico` / `historico[].valores` (null: sem série numérica) */
+const SERIE={uso:'uso_plataforma_pct',crit:'chamados_criticos',reab:'chamados_reabertos',sla:'pct_sla_cumprido',nps:'nota_nps',semresp:null,reun:'reunioes_realizadas',atraso:'dias_atraso_pagamento',recl:'reclamacoes_formais'};
 const MOT={
   uso:['Uso da plataforma em queda','Propor treinamento e plano de adoção; investigar a queda de uso.'],
   crit:['Chamados críticos em alta','Escalar os chamados críticos ao time sênior e dar retorno em até 24h.'],
@@ -128,25 +132,41 @@ const MOT={
   recl:['Reclamação formal','Gestor conversa com a diretoria do cliente sobre a reclamação.']
 };
 const CLIENTES=[
-  ['C017','Logística','Médio','Avançado',18400,.46,'mar/2026',[['uso','Uso caiu de 78% para 41% em 4 meses'],['crit','5 chamados críticos nos últimos 3 meses contra 1 nos 6 anteriores'],['reun','Nenhuma reunião realizada desde abr/2026']],'2023-05',0.4],
-  ['C052','Varejo','Grande','Avançado',31200,.31,'abr/2026',[['nps','Nota 9 em dez/2025 e 4 em jun/2026'],['sla','SLA cumprido em 71% contra 92% nos 6 meses anteriores']],'2022-11',0.3],
-  ['C008','Saúde','Pequeno','Básico',2900,.91,'jan/2026',[['semresp','Sem resposta à pesquisa há 4 meses'],['atraso','Atraso médio de 19 dias nos últimos 3 meses'],['uso','Uso da plataforma em 22%']],'2024-02',0.8],
-  ['C031','Indústria','Médio','Intermediário',9600,.68,'fev/2026',[['reab','7 chamados reabertos nos últimos 3 meses'],['recl','2 reclamações formais em 2026'],['sla','SLA cumprido em 64%']],'2023-08',0.7],
-  ['C044','Serviços','Grande','Avançado',24800,.22,'mai/2026',[['reun','2 de 3 reuniões previstas não aconteceram'],['uso','Uso caiu 12 p.p. em 3 meses']],'2024-09',0.18],
-  ['C023','Varejo','Médio','Intermediário',7400,.57,'mar/2026',[['nps','Detrator desde abr/2026'],['crit','3 chamados críticos em mai/2026']],'2023-01',0.5],
-  ['C066','Logística','Pequeno','Básico',3100,.63,'fev/2026',[['atraso','Atraso de 12 dias em jun/2026'],['semresp','Sem resposta à pesquisa há 3 meses']],'2025-03',0.6],
-  ['C012','Saúde','Grande','Avançado',27500,.14,'mai/2026',[['sla','SLA cumprido em 83% em jun/2026']],'2022-06',0.16],
-  ['C075','Indústria','Pequeno','Básico',2600,.34,'abr/2026',[['uso','Uso em 35% contra 58% antes']],'2024-06',0.34],
-  ['C038','Serviços','Médio','Intermediário',8800,.19,'mai/2026',[['reab','2 chamados reabertos em jun/2026']],'2023-10',0.21],
-  ['C059','Varejo','Pequeno','Básico',3300,.09,'jun/2026',[['nps','Nota 7 em jun/2026 contra 9 antes']],'2025-01',0.07],
+  ['C017','Logística','Médio','Avançado',18400,.46,'mar/2026',[['uso','Uso caiu de 78% para 41% em 4 meses',78,41],['crit','5 chamados críticos nos últimos 3 meses contra 1 nos 6 anteriores',1,5],['reun','Nenhuma reunião realizada desde abr/2026',3,0]],'2023-05',0.4],
+  ['C052','Varejo','Grande','Avançado',31200,.31,'abr/2026',[['nps','Nota 9 em dez/2025 e 4 em jun/2026',9,4],['sla','SLA cumprido em 71% contra 92% nos 6 meses anteriores',92,71]],'2022-11',0.3],
+  ['C008','Saúde','Pequeno','Básico',2900,.91,'jan/2026',[['semresp','Sem resposta à pesquisa há 4 meses'],['atraso','Atraso médio de 19 dias nos últimos 3 meses',3,19],['uso','Uso da plataforma em 22%',40,22]],'2024-02',0.8],
+  ['C031','Indústria','Médio','Intermediário',9600,.68,'fev/2026',[['reab','7 chamados reabertos nos últimos 3 meses',1,7],['recl','2 reclamações formais em 2026',0,1.5],['sla','SLA cumprido em 64%',90,64]],'2023-08',0.7],
+  ['C044','Serviços','Grande','Avançado',24800,.22,'mai/2026',[['reun','2 de 3 reuniões previstas não aconteceram',3,1],['uso','Uso caiu 12 p.p. em 3 meses',70,58]],'2024-09',0.18],
+  ['C023','Varejo','Médio','Intermediário',7400,.57,'mar/2026',[['nps','Detrator desde abr/2026',8,5],['crit','3 chamados críticos em mai/2026',1,3]],'2023-01',0.5],
+  ['C066','Logística','Pequeno','Básico',3100,.63,'fev/2026',[['atraso','Atraso de 12 dias em jun/2026',2,12],['semresp','Sem resposta à pesquisa há 3 meses']],'2025-03',0.6],
+  ['C012','Saúde','Grande','Avançado',27500,.14,'mai/2026',[['sla','SLA cumprido em 83% em jun/2026',92,83]],'2022-06',0.16],
+  ['C075','Indústria','Pequeno','Básico',2600,.34,'abr/2026',[['uso','Uso em 35% contra 58% antes',58,35]],'2024-06',0.34],
+  ['C038','Serviços','Médio','Intermediário',8800,.19,'mai/2026',[['reab','2 chamados reabertos em jun/2026',1,2]],'2023-10',0.21],
+  ['C059','Varejo','Pequeno','Básico',3300,.09,'jun/2026',[['nps','Nota 7 em jun/2026 contra 9 antes',9,7]],'2025-01',0.07],
   ['C004','Saúde','Médio','Intermediário',10100,.06,'jun/2026',[],'2021-12',0.06]
 ];
+const MESES18=[...Array(18)].map((_,i)=>`${2025+(i>11)}-${String(i%12+1).padStart(2,'0')}`);
+/* histórico mensal simulado (jan/2025 a jun/2026): estável e, nos últimos meses, caminha para o valor recente */
+function historico(id,motivos,p,ant){
+  let z=[...id].reduce((x,c)=>(x*31+c.charCodeAt(0))%65521,7);const r=()=>(z=z*16807%2147483647)/2147483647;
+  const vals=Object.fromEntries(motivos.filter(([k,,b])=>SERIE[k]&&b!=null).map(([k,,b,a])=>[SERIE[k],MESES18.map((_,i)=>{
+    const t=Math.min(1,Math.max(0,(i-13)/3)),ruido=(r()-.5)*.16*Math.max(Math.abs(a),Math.abs(b),1);
+    return Math.max(0,+(b+(a-b)*t+ruido).toFixed(1))}) ]));
+  return MESES18.map((m,i)=>({mes_ref:m,risco:i==17?p:i==16?ant:+(ant*(.55+.45*i/16)).toFixed(4),
+    valores:Object.fromEntries(Object.entries(vals).map(([k,v])=>[k,v[i]]))}));
+}
+/* mesma regra do backend (motor/saida.py `_comparacao`): média dos últimos 3 meses × média dos 6 anteriores */
+function comparacao(h,chave){
+  const v=h.map(x=>x.valores[chave]).filter(x=>typeof x=='number'),rec=v.slice(-3),ant=v.slice(-9,-3),m=a=>a.reduce((s,x)=>s+x,0)/a.length;
+  return rec.length&&ant.length?{chave,recente:+m(rec).toFixed(2),anterior:+m(ant).toFixed(2),meses_recente:rec.length,meses_anterior:ant.length}:null;
+}
 const CANCELADOS_HISTORICO=11; // vem do backend (situacao = Cancelado)
-const api={ranking:()=>new Promise(ok=>setTimeout(()=>ok(CLIENTES.map(([id,seg,porte,plano,v,p,desde,mot,inicio,ant])=>({
-  cliente_id:id,segmento:seg,porte,plano,valor_mensal:v,inicio_contrato:inicio,probabilidade:p,prob_mes_anterior:ant,score:Math.round(40+p*60),perda_anual_esperada:p*v*12,
-  faixa:p>=.5?'alto':p>=.25?'atencao':'baixo',sinal_desde:desde,
-  motivos:mot.map(([k,evidencia])=>({titulo:MOT[k][0],evidencia,acao:MOT[k][1]}))
-})).sort((a,b)=>b.perda_anual_esperada-a.perda_anual_esperada).map((c,i)=>({posicao:i+1,...c}))),350))};
+const api={ranking:()=>new Promise(ok=>setTimeout(()=>ok(CLIENTES.map(([id,seg,porte,plano,v,p,desde,mot,inicio,ant])=>{
+  const h=historico(id,mot,p,ant);
+  return{cliente_id:id,segmento:seg,porte,plano,valor_mensal:v,inicio_contrato:inicio,probabilidade:p,prob_mes_anterior:ant,score:Math.round(40+p*60),perda_anual_esperada:p*v*12,
+  faixa:p>=.5?'alto':p>=.25?'atencao':'baixo',sinal_desde:desde,historico:h,
+  motivos:mot.map(([k,evidencia])=>({titulo:MOT[k][0],evidencia,acao:MOT[k][1],chave_serie:SERIE[k],comparacao:SERIE[k]?comparacao(h,SERIE[k]):null}))}
+}).sort((a,b)=>b.perda_anual_esperada-a.perda_anual_esperada).map((c,i)=>({posicao:i+1,...c}))),350))};
 const FX={alto:'Alto',atencao:'Atenção',baixo:'Baixo'};
 const mesFmt=m=>m?MES[+m.slice(5,7)-1]+'/'+m.slice(0,4):'—';
 
@@ -157,11 +177,25 @@ const filtrar=()=>S.rank.filter(c=>(!F.faixa||c.faixa==F.faixa)&&(!F.q||norm(c.c
 const setF=(k,v)=>{F[k]=v;F.n=F0.n;pintarFila()};
 const limparF=()=>{F={...F0};render()};
 const maisF=()=>{F.n+=10;pintarFila()};
-const variacao=c=>{
-  const pp=(c.probabilidade-c.prob_mes_anterior)*100,rel=c.prob_mes_anterior?pp/(c.prob_mes_anterior*100)*100:0,
-    k=Math.abs(pp)<1?'igual':pp>0?'pior':'melhor',sg=x=>(x>0?'+':x<0?'−':'')+Math.abs(x).toLocaleString('pt-BR',{maximumFractionDigits:1});
-  return`<td class="var-c ${k}"><b>${k=='pior'?'▲':k=='melhor'?'▼':'●'} ${sg(Math.round(rel))}%</b><small>${sg(pp)} p.p.</small></td>`;
-};
+const sg=x=>(x>0?'+':x<0?'−':'')+Math.abs(x).toLocaleString('pt-BR',{maximumFractionDigits:1});
+const nf=x=>x.toLocaleString('pt-BR',{maximumFractionDigits:1});
+/* chance do mês anterior: campo do mock ou, na API, o penúltimo `historico[].risco` */
+function varData(c){
+  const ant=c.prob_mes_anterior??c.historico?.at(-2)?.risco??c.probabilidade,pp=(c.probabilidade-ant)*100,rel=ant?pp/(ant*100)*100:0;
+  return{pp,rel,k:Math.abs(pp)<1?'igual':pp>0?'pior':'melhor'};
+}
+const varSeta=k=>k=='pior'?'▲':k=='melhor'?'▼':'●';
+const variacao=c=>{const{pp,rel,k}=varData(c);return`<td class="var-c ${k}"><b>${varSeta(k)} ${sg(Math.round(rel))}%</b><small>${sg(pp)} p.p.</small></td>`};
+
+/* gráfico de linha da variável ao longo do histórico; o fundo marca os 3 meses da comparação */
+function spark(h,chave){
+  const pts=h.map(x=>x.valores?.[chave]);if(pts.filter(v=>typeof v=='number').length<2)return'';
+  const W=360,H=38,n=pts.length,ok=pts.filter(v=>typeof v=='number'),mn=Math.min(...ok),mx=Math.max(...ok),
+    X=i=>(i/(n-1))*(W-6)+3,Y=v=>mx==mn?H/2:H-4-((v-mn)/(mx-mn))*(H-8),
+    xs=pts.map((v,i)=>typeof v=='number'?[X(i),Y(v)]:null).filter(Boolean),ult=xs.at(-1);
+  return`<svg class="spark" viewBox="0 0 ${W} ${H}" role="img" aria-label="Evolução mensal de ${esc(mesFmt(h[0].mes_ref))} a ${esc(mesFmt(h[n-1].mes_ref))}: de ${nf(ok[0])} a ${nf(ok.at(-1))}"><rect x="${X(n-3)-3}" y="0" width="${W-X(n-3)+3}" height="${H}" fill="var(--edge)" opacity=".45"/><polyline points="${xs.map(p=>p.map(v=>v.toFixed(1)).join(',')).join(' ')}" fill="none" stroke="var(--pri)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${ult[0].toFixed(1)}" cy="${ult[1].toFixed(1)}" r="3" fill="var(--pri)"/></svg>`;
+}
+const compTxt=m=>`${nf(m.recente)} ${m.meses_recente==1?'no último mês':'nos últimos '+m.meses_recente+' meses'} contra ${nf(m.anterior)} ${m.meses_anterior==1?'no mês anterior':'nos '+m.meses_anterior+' meses anteriores'}`;
 
 /* ---------- leitura da base ---------- */
 const colsOf=n=>Object.keys(S.sheets[n][0]||{});
@@ -264,11 +298,14 @@ ${l.length>v.length?`<div class="mais"><button class="btn sm" onclick="maisF()">
 
 function abrir(pos){
   const c=S.rank.find(x=>x.posicao==pos);if(!c)return;
+  const{pp,rel,k}=varData(c),h=c.historico||[];
   $('dw').innerHTML=`<div class="drw" role="dialog" aria-label="Cliente ${esc(c.cliente_id)}"><button class="btn ghost sm" style="float:right" onclick="fechar()" id="fx">Fechar</button>
 <h2>${esc(c.cliente_id)}</h2><p class="mut">${esc([c.segmento,c.plano,c.porte].join(' · '))}</p>
-<p style="margin-top:12px"><span class="bd ${c.faixa}">${FX[c.faixa]}</span> Posição ${c.posicao} · chance de cancelar ${pc(c.probabilidade)} · ${brl(c.valor_mensal)}/mês</p>
+<p style="margin-top:12px"><span class="bd ${c.faixa}">${FX[c.faixa]}</span> Posição ${c.posicao} · Score ${c.score} · chance de cancelar ${pc(c.probabilidade)} · ${brl(c.valor_mensal)}/mês</p>
+<p class="var-c ${k}" style="margin-top:8px"><span class="mut">Variação vs. mês anterior:</span> <b>${varSeta(k)} ${sg(Math.round(rel))}%</b> <small style="display:inline">${sg(pp)} p.p.</small></p>
 <p class="mut" style="margin-top:4px">Perda anual esperada ${brl(c.perda_anual_esperada)} · sinal desde ${esc(c.sinal_desde)} · contrato desde ${mesFmt(c.inicio_contrato)}</p>
-<h3>Por quê</h3>${c.motivos.map(o=>`<div class="ev"><b>${esc(o.titulo)}</b><br><small>${esc(o.evidencia)}</small></div>`).join('')||'<p class="mut">Nenhum sinal se destaca.</p>'}
+<h3>Evidências</h3>${c.motivos.map(o=>`<div class="ev"><b>${esc(o.titulo)}</b><br><small>${esc(o.comparacao?compTxt(o.comparacao):o.evidencia)}</small>${o.chave_serie?spark(h,o.chave_serie):''}</div>`).join('')||'<p class="mut">Nenhum sinal se destaca.</p>'}
+${h.length?'<p class="mut" style="font-size:12px">Gráficos: '+esc(mesFmt(h[0].mes_ref))+' a '+esc(mesFmt(h.at(-1).mes_ref))+'; a faixa cinza marca os 3 últimos meses.</p>':''}
 <h3>O que fazer</h3><ol>${c.motivos.map(o=>`<li>${esc(o.acao)}</li>`).join('')||'<li>Manter o acompanhamento de rotina.</li>'}</ol></div>`;
   $('fx').focus();
 }
@@ -320,6 +357,7 @@ function render(){
   const r=rota();
   document.querySelectorAll('.side nav a').forEach(a=>a.id=='n-'+r?a.setAttribute('aria-current','page'):a.removeAttribute('aria-current'));
   $('modelo').innerHTML=S.treinado?`<b>Modelo treinado</b>${S.treinado.quando} · ${S.treinado.vars} variáveis`:'<b>Nenhum modelo treinado</b>A fila mostra dados de demonstração.';
+  $('mn').className='main'+(r=='modelos'?' estreito':'');
   $('mn').innerHTML=r=='modelos'?viewTreinar():viewRanking();
   if(r=='ranking'&&S.rank)pintarFila();
 }
