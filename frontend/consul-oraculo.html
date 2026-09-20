@@ -19,8 +19,6 @@ p{margin:0}a{color:var(--pri)}.mut{color:var(--mut)}small{font-size:12px}
 .side nav{display:flex;flex-direction:column;gap:4px}
 .side nav a{display:block;padding:9px 14px;border-radius:4px;font-size:14px;text-decoration:none;color:var(--ink)}
 .side nav a:hover{background:var(--soft)}.side nav a[aria-current="page"]{background:var(--pri);color:#fff}
-.modelo{margin-top:auto;padding:12px 14px;border-radius:4px;background:var(--soft);font-size:13px}
-.modelo b{display:block;margin-bottom:2px}.modelo:empty{display:none}
 .main{padding:28px 32px 48px;min-width:0;width:100%}.main.estreito{max-width:1180px;margin:0 auto}
 .head{margin-bottom:20px}.head p{margin-top:6px;max-width:680px}
 
@@ -36,7 +34,7 @@ input[type=checkbox]{width:auto}input[type=range]{padding:0}input[type=checkbox]
 .drop:focus-visible{outline-offset:4px}
 .tabs{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.tabs .chip{padding:4px 12px}
 .chip{display:inline-block;font-size:12px;background:var(--soft);color:var(--ink);border-radius:4px;padding:2px 10px;margin:1px}
-.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px 18px}
+.form{display:grid;grid-template-columns:1fr;gap:18px;max-width:640px}
 .form label{display:block;font-size:13px;font-weight:600;margin-bottom:4px}
 .form>div{display:flex;flex-direction:column}.form>div>:last-child{margin-top:auto}
 .form .par{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -73,6 +71,9 @@ td small{white-space:nowrap}
 .vazio{padding:28px 8px;text-align:center}
 .mais{text-align:center;margin-top:14px}
 .drw{position:fixed;top:0;right:0;bottom:0;width:min(440px,100%);background:var(--drw);border-left:1px solid var(--edge);padding:24px;overflow:auto;z-index:9;box-shadow:-8px 0 30px #0002}
+.cab-modelo{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+.sel-modelo{width:min(340px,100%)}.sel-modelo label{display:block;font-size:13px;font-weight:600;margin-bottom:4px}
+.semmodelo{text-align:center;padding:40px 22px}.semmodelo p{margin:6px 0 18px}.semmodelo .btn{display:inline-block;text-decoration:none}
 .leg{display:flex;flex-wrap:wrap;gap:6px 20px;font-size:13px;margin:12px 0 4px}.leg i{display:inline-block;width:22px;height:0;border-top:2px solid;vertical-align:middle;margin-right:6px}.leg i.cz{height:12px;border:0;background:var(--edge);opacity:.6;border-radius:2px;vertical-align:-2px}
 .ag{margin-top:22px}.ag h3{margin:0 0 2px;font-size:16px}.ag h3 span{font-weight:400;font-size:13px}
 .ag svg{display:block;width:100%;height:auto}.ag svg text{font:11px "Instrument Sans",Inter,sans-serif;fill:var(--mut)}
@@ -80,19 +81,51 @@ td small{white-space:nowrap}
 .spark{display:block;width:100%;height:auto;margin-top:8px}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1f2430;color:#fff;padding:10px 18px;border-radius:4px;z-index:20}
 
+/* controles personalizados (o JS troca select, número e mês por estes; o campo nativo fica escondido e guarda o valor) */
+.dd{position:relative;min-width:0}
+.dd-b{width:100%;display:flex;align-items:center;gap:8px;text-align:left;padding:9px 34px 9px 12px;border:1px solid var(--edge);border-radius:4px;color:var(--ink);font:inherit;cursor:pointer;
+  background:var(--in) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4.5 6 8.5l4-4' fill='none' stroke='%236b7280' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 12px center}
+.dd-b span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dd-b .ph,.dd-l .ph{color:var(--mut)}
+.dd-b:hover:not(:disabled){border-color:var(--acc)}.dd.aberto .dd-b{border-color:var(--pri)}.dd-b:disabled{opacity:.5;cursor:not-allowed}
+.dd-l{display:none;position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:30;margin:0;padding:4px;list-style:none;max-height:264px;overflow:auto;background:var(--card);border:1px solid var(--edge);border-radius:4px;box-shadow:0 8px 24px #1f243026}
+.dd.aberto .dd-l{display:block}.dd.acima .dd-l{top:auto;bottom:calc(100% + 4px)}
+.dd-l li{display:flex;justify-content:space-between;gap:8px;padding:8px 10px;border-radius:4px;font-size:14px;cursor:pointer}
+.dd-l li.ativo{background:var(--soft)}.dd-l li[aria-selected="true"]{color:var(--pri);font-weight:600}
+.dd-l li[aria-selected="true"]::after{content:"";flex:none;width:10px;height:5px;margin-top:5px;border:2px solid currentColor;border-top:0;border-right:0;transform:rotate(-45deg)}
+input[type=number]{-moz-appearance:textfield;appearance:textfield}
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
+.num-in{position:relative}.num-in input{padding-right:40px}
+.num-in .st{position:absolute;top:1px;right:1px;bottom:1px;width:28px;display:flex;flex-direction:column;border-left:1px solid var(--edge);border-radius:0 3px 3px 0;overflow:hidden}
+.num-in .st button{flex:1;position:relative;border:0;padding:0;background:var(--in);cursor:pointer}.num-in .st button+button{border-top:1px solid var(--edge)}.num-in .st button:hover{background:var(--soft)}
+.num-in .st button::before{content:"";position:absolute;left:50%;top:50%;width:5px;height:5px;border:solid var(--mut);border-width:0 1.6px 1.6px 0}
+.num-in .st .st-up::before{transform:translate(-50%,-25%) rotate(-135deg)}.num-in .st .st-dn::before{transform:translate(-50%,-75%) rotate(45deg)}
+.mes-p{display:none;position:absolute;left:0;top:calc(100% + 4px);z-index:30;width:max(100%,236px);padding:10px;background:var(--card);border:1px solid var(--edge);border-radius:4px;box-shadow:0 8px 24px #1f243026}
+.mes.aberto .mes-p{display:block}.mes.acima .mes-p{top:auto;bottom:calc(100% + 4px)}
+.mes-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-weight:600}
+.mes-p button{border:0;background:transparent;color:var(--ink);font:inherit;padding:6px 10px;border-radius:4px;cursor:pointer}.mes-p button:hover{background:var(--soft)}
+.mes-g{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}.mes-g button{padding:8px 0}.mes-g button[aria-pressed="true"]{background:var(--pri);color:#fff}.mes-f{margin-top:8px;text-align:right}
+input[type=checkbox]{-webkit-appearance:none;appearance:none;width:18px;height:18px;margin:0;padding:0;flex:none;display:inline-grid;place-content:center;vertical-align:middle;border:1.5px solid var(--edge);border-radius:4px;background:var(--in);cursor:pointer}
+input[type=checkbox]:hover{border-color:var(--acc)}input[type=checkbox]:checked{background:var(--pri);border-color:var(--pri)}
+input[type=checkbox]:checked::after{content:"";width:9px;height:5px;margin-top:-2px;border:2px solid #fff;border-top:0;border-right:0;transform:rotate(-45deg)}
+input[type=range]{-webkit-appearance:none;appearance:none;height:20px;padding:0;border:0;background:transparent;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:4px;background:var(--edge)}
+input[type=range]::-moz-range-track{height:4px;border-radius:4px;background:var(--edge)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;margin-top:-6px;border:2px solid #fff;border-radius:4px;background:var(--pri);box-shadow:0 0 0 1px var(--pri)}
+input[type=range]::-moz-range-thumb{width:12px;height:12px;border:2px solid #fff;border-radius:4px;background:var(--pri);box-shadow:0 0 0 1px var(--pri)}
+*{scrollbar-width:thin;scrollbar-color:var(--edge) transparent}
 @media(max-width:1000px){.fila{grid-template-columns:1fr}.filtros{position:static;order:-1}}
 @media(max-width:860px){
 .app{grid-template-columns:1fr}
 .side{position:sticky;top:0;z-index:5;height:auto;flex-direction:row;align-items:center;gap:8px;padding:10px 12px;overflow-x:auto;border-right:0;border-bottom:1px solid var(--edge)}
 .logo{padding:0 8px 0 4px;white-space:nowrap}.side nav{flex-direction:row}.side nav a{white-space:nowrap}
-.modelo{display:none}.main{padding:18px 16px 40px}.var input[type=range]{width:110px}
+.main{padding:18px 16px 40px}.var input[type=range]{width:110px}
 }
 </style></head><body>
 <div class="app">
 <aside class="side">
 <div class="logo">Global <span>Oráculo</span></div>
 <nav aria-label="Principal"><a href="#/ranking" id="n-ranking">Ranking</a><a href="#/modelos" id="n-modelos">Modelos</a></nav>
-<div class="modelo" id="modelo"></div>
 </aside>
 <main class="main" id="mn"></main>
 </div>
@@ -112,8 +145,11 @@ const S={
   m:{tab:'',id:'',alvoTab:'',alvo:'',alvoTipo:'data',valTab:'',val:''},
   sel:{},w:{},modo:'auto',
   treino:null,   // {passo} enquanto treina
-  treinado:null, // {quando, vars} depois de treinar
-  rank:null,
+  modelos:[],    // todos os modelos treinados (título único, data de criação, base); começa vazio
+  ativo:null,    // id do modelo cuja fila aparece no ranking
+  criado:null,   // id do modelo recém-treinado (mensagem do passo 4)
+  titulo:'',     // campo "Título do modelo"
+  rank:null,     // fila do modelo ativo
   analise:null   // resultado do botão "Analisar dados"
 };
 
@@ -162,12 +198,39 @@ function comparacao(h,chave){
   const v=h.map(x=>x.valores[chave]).filter(x=>typeof x=='number'),rec=v.slice(-3),ant=v.slice(-9,-3),m=a=>a.reduce((s,x)=>s+x,0)/a.length;
   return rec.length&&ant.length?{chave,recente:+m(rec).toFixed(2),anterior:+m(ant).toFixed(2),meses_recente:rec.length,meses_anterior:ant.length}:null;
 }
-const api={ranking:()=>new Promise(ok=>setTimeout(()=>ok(CLIENTES.map(([id,seg,porte,plano,v,p,desde,mot,inicio,ant])=>{
-  const h=historico(id,mot,p,ant);
-  return{cliente_id:id,segmento:seg,porte,plano,valor_mensal:v,inicio_contrato:inicio,probabilidade:p,prob_mes_anterior:ant,score:Math.round(40+p*60),perda_anual_esperada:p*v*12,
-  faixa:p>=.5?'alto':p>=.25?'atencao':'baixo',sinal_desde:desde,historico:h,
-  motivos:mot.map(([k,evidencia])=>({titulo:MOT[k][0],evidencia,acao:MOT[k][1],chave_serie:SERIE[k],comparacao:SERIE[k]?comparacao(h,SERIE[k]):null}))}
-}).sort((a,b)=>b.perda_anual_esperada-a.perda_anual_esperada).map((c,i)=>({posicao:i+1,...c}))),350))};
+/* Três modelos de exemplo, já treinados na mesma base de demonstração (só aparecem ao usar os dados de demonstração).
+   `sem` = motivos que o modelo não enxerga (variáveis desmarcadas no treino); `semente` muda o risco de cada modelo. */
+const MODELOS_DEMO=[
+  {id:'m1',titulo:'Logística · base completa',algoritmo:'Logística',criado_em:'2026-09-12T14:32',variaveis:11,modo:'auto',auc:.86,semente:1,sem:[]},
+  {id:'m2',titulo:'LightGBM · sem NPS',algoritmo:'LightGBM',criado_em:'2026-09-15T09:10',variaveis:8,modo:'auto',auc:.84,semente:2,sem:['nps','semresp']},
+  {id:'m3',titulo:'Random Forest · pesos manuais',algoritmo:'Random Forest',criado_em:'2026-09-18T16:45',variaveis:10,modo:'manual',auc:.83,semente:3,sem:[]}
+].map(m=>({...m,base:'dados_demonstracao.xlsx'}));
+/* O backend devolve a fila de cada modelo já ordenada; aqui cada modelo "enxerga" o risco de um jeito. */
+function montar(mod){
+  const ruido=(id,i)=>{const h=[...id].reduce((x,c)=>(x*31+c.charCodeAt(0)+i*17)%9973,i+5);return(h%1000)/1000-.5},lim=x=>Math.min(.97,Math.max(.02,x));
+  return CLIENTES.map(([id,seg,porte,plano,v,p0,desde,mot0,inicio,ant0])=>{
+    const k=mod.semente-1,p=k?lim(p0+ruido(id,k)*.18):p0,ant=k?lim(ant0+ruido(id,k+9)*.12):ant0,
+      mot=mot0.filter(([m])=>!mod.sem.includes(m)),h=historico(id,mot,p,ant);
+    return{cliente_id:id,segmento:seg,porte,plano,valor_mensal:v,inicio_contrato:inicio,probabilidade:p,prob_mes_anterior:ant,score:Math.round(40+p*60),perda_anual_esperada:p*v*12,
+      faixa:p>=.5?'alto':p>=.25?'atencao':'baixo',sinal_desde:desde,historico:h,
+      motivos:mot.map(([k,evidencia])=>({titulo:MOT[k][0],evidencia,acao:MOT[k][1],chave_serie:SERIE[k],comparacao:SERIE[k]?comparacao(h,SERIE[k]):null}))};
+  }).sort((a,b)=>b.perda_anual_esperada-a.perda_anual_esperada).map((c,i)=>({posicao:i+1,...c}));
+}
+const api={ranking:mod=>new Promise(ok=>setTimeout(()=>ok(montar(mod)),350))};
+const modeloAtivo=()=>S.modelos.find(m=>m.id==S.ativo);
+const dataHora=iso=>`${iso.slice(8,10)}/${MES[+iso.slice(5,7)-1]}/${iso.slice(0,4)} ${iso.slice(11,16)}`;
+function usarModelo(id,ir){
+  const mod=S.modelos.find(m=>m.id==id);if(!mod)return;
+  S.ativo=id;S.rank=null;F.n=F0.n;
+  api.ranking(mod).then(r=>{if(S.ativo==id){S.rank=r;if(rota()=='ranking')render()}});
+  if(ir&&rota()!='ranking')location.hash='#/ranking';else render();
+}
+function carregarDemo(){
+  setData(demo(),'dados_demonstracao.xlsx');
+  MODELOS_DEMO.forEach(m=>{if(!S.modelos.some(x=>x.id==m.id))S.modelos.push({...m})});
+  if(!S.ativo)usarModelo(MODELOS_DEMO.at(-1).id);else render();
+  toast('Base de demonstração carregada, com 3 modelos já treinados.');
+}
 const mesFmt=m=>m?MES[+m.slice(5,7)-1]+'/'+m.slice(0,4):'—';
 
 /* ---------- filtros do ranking (só filtram a exibição; a ordem e a posição vêm do backend) ---------- */
@@ -210,7 +273,7 @@ function load(f){
   }catch(e){toast('Não foi possível ler o arquivo. Envie .xlsx, .xls ou .csv.')}};
   r.readAsArrayBuffer(f);
 }
-function setData(sh,name){S.sheets=sh;S.file=name;S.sel={};S.w={};S.treinado=null;S.treino=null;S.analise=null;sugerir();render()}
+function setData(sh,name){S.sheets=sh;S.file=name;S.sel={};S.w={};S.criado=null;S.titulo='';S.treino=null;S.analise=null;sugerir();render()}
 
 /* sugestão automática do mapeamento; o usuário confirma na tela */
 function sugerir(){
@@ -246,31 +309,117 @@ const isSel=k=>S.sel[k]!==false,peso=k=>S.w[k]??.5;
 
 /* ---------- treino (simulado; o backend fará de verdade) ---------- */
 const PASSOS=['Lendo as tabelas','Montando as variáveis por cliente','Escolhendo as variáveis que pesam','Validando com os clientes que saíram','Montando a fila de atendimento'];
+const tituloUnico=t=>!S.modelos.some(m=>norm(m.titulo)==norm(t));
+const sugestaoTitulo=()=>{let i=S.modelos.length+1;while(!tituloUnico('Modelo '+i))i++;return'Modelo '+i};
 function treinar(){
-  const m=S.m,v=cand().filter(x=>isSel(x.k));
+  const m=S.m,c=cand(),v=c.filter(x=>isSel(x.k)),titulo=S.titulo.trim();
   if(!m.tab||!m.id)return toast('Escolha a tabela de clientes e a coluna do identificador.');
   if(!m.alvoTab||!m.alvo)return toast('Escolha a tabela e a coluna que será prevista.');
   if(!v.length)return toast('Marque ao menos uma variável.');
   if(S.modo=='manual'&&!v.some(x=>peso(x.k)>0))return toast('Dê peso maior que 0 a alguma variável.');
+  if(!titulo)return toast('Dê um título ao modelo.');
+  if(!tituloUnico(titulo))return toast('Já existe um modelo com esse título. Escolha outro.');
   S.treino={passo:0};render();
   const t=setInterval(()=>{
     if(S.treino.passo<PASSOS.length){S.treino.passo++;if(rota()=='modelos')render();return}
     clearInterval(t);
-    const d=new Date();
-    S.treino=null;S.treinado={quando:MES[d.getMonth()]+'/'+d.getFullYear(),vars:v.length};
-    render();toast('Modelo treinado.');
+    const d=new Date(),desm=c.filter(x=>!isSel(x.k)).map(x=>x.c),sem=Object.keys(SERIE).filter(k=>SERIE[k]&&desm.includes(SERIE[k]));
+    if(sem.includes('nps'))sem.push('semresp');
+    const id='m'+Date.now(),mod={id,titulo,algoritmo:'Logística',criado_em:new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,16),base:S.file,
+      variaveis:v.length,modo:S.modo,auc:+(.8+(S.modelos.length%5)*.012).toFixed(2),semente:S.modelos.length+4,sem};
+    S.modelos.push(mod);S.treino=null;S.criado=id;S.titulo='';
+    usarModelo(id);toast('Modelo treinado.');
   },600);
+}
+
+/* ---------- controles personalizados ---------- */
+/* O HTML continua com <select>, <input type=number> e <input type=month>; depois de cada render() estes viram
+   componentes próprios. O campo nativo fica escondido, guarda o valor e recebe os eventos change/input, então
+   os onchange/oninput da tela funcionam sem mudança. */
+const mkEl=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e};
+const fecharTodos=ex=>document.querySelectorAll('.dd.aberto').forEach(d=>{if(d!==ex){d.classList.remove('aberto');d.querySelector('[aria-expanded]')?.setAttribute('aria-expanded','false')}});
+document.addEventListener('click',e=>{if(!e.target.closest('.dd'))fecharTodos()});
+const abreParaCima=(w,b,alt)=>{const r=b.getBoundingClientRect();w.classList.toggle('acima',innerHeight-r.bottom<alt&&r.top>innerHeight-r.bottom)};
+
+function melhorarSelect(sel){
+  if(sel.dataset.dd)return;sel.dataset.dd='1';
+  const w=mkEl('div','dd'),b=mkEl('button','dd-b'),l=mkEl('ul','dd-l'),opts=[...sel.options];let ativo=sel.selectedIndex;
+  b.type='button';b.setAttribute('role','combobox');b.setAttribute('aria-haspopup','listbox');b.setAttribute('aria-expanded','false');
+  if(sel.id){b.id=sel.id;sel.removeAttribute('id')}          // o <label for> passa a apontar para o botão
+  if(sel.getAttribute('aria-label'))b.setAttribute('aria-label',sel.getAttribute('aria-label'));
+  b.disabled=sel.disabled;l.setAttribute('role','listbox');
+  const rot=()=>{const o=sel.options[sel.selectedIndex];b.textContent='';b.append(mkEl('span',o&&o.value===''?'ph':'',o?o.text:''))},
+    pintar=()=>[...l.children].forEach((li,i)=>{li.classList.toggle('ativo',i==ativo);li.setAttribute('aria-selected',String(i==sel.selectedIndex))}),
+    ver=()=>l.children[ativo]?.scrollIntoView({block:'nearest'}),
+    fechar=()=>{w.classList.remove('aberto');b.setAttribute('aria-expanded','false')},
+    abrir=()=>{if(b.disabled)return;fecharTodos(w);w.classList.add('aberto');b.setAttribute('aria-expanded','true');ativo=sel.selectedIndex;pintar();abreParaCima(w,b,Math.min(270,l.scrollHeight+12));ver()},
+    escolher=i=>{const mudou=i!=sel.selectedIndex;sel.selectedIndex=i;rot();fechar();b.focus();if(mudou)sel.dispatchEvent(new Event('change',{bubbles:true}))};
+  opts.forEach((o,i)=>{const li=mkEl('li',o.value===''?'ph':'',o.text);li.setAttribute('role','option');li.onmousedown=e=>e.preventDefault();li.onclick=()=>escolher(i);li.onmousemove=()=>{if(ativo!=i){ativo=i;pintar()}};l.append(li)});
+  b.onclick=()=>w.classList.contains('aberto')?fechar():abrir();
+  b.onkeydown=e=>{
+    const aberto=w.classList.contains('aberto'),n=opts.length,k=e.key;
+    if(k=='ArrowDown'||k=='ArrowUp'){e.preventDefault();if(!aberto)return abrir();ativo=(ativo+(k=='ArrowDown'?1:-1)+n)%n;pintar();ver()}
+    else if((k=='Home'||k=='End')&&aberto){e.preventDefault();ativo=k=='Home'?0:n-1;pintar();ver()}
+    else if(k=='Enter'||k==' '){e.preventDefault();aberto?escolher(ativo):abrir()}
+    else if(k=='Escape'&&aberto){e.preventDefault();e.stopPropagation();fechar()}
+    else if(k=='Tab'&&aberto)fechar();
+    else if(k.length==1&&!e.ctrlKey&&!e.metaKey){                 // digitar a inicial salta para a opção
+      const c=norm(k),i=opts.findIndex((o,j)=>j>ativo&&norm(o.text).startsWith(c)),j=i>=0?i:opts.findIndex(o=>norm(o.text).startsWith(c));
+      if(j>=0){if(!aberto)abrir();ativo=j;pintar();ver()}
+    }
+  };
+  rot();sel.style.display='none';sel.parentNode.insertBefore(w,sel);w.append(b,l,sel);
+}
+
+function melhorarNumero(inp){
+  if(inp.dataset.num)return;inp.dataset.num='1';
+  const w=mkEl('div','num-in'),st=mkEl('div','st');
+  const bt=(dir,rot)=>{const b=mkEl('button','st-'+(dir>0?'up':'dn'));b.type='button';b.tabIndex=-1;b.setAttribute('aria-label',rot);
+    b.onclick=()=>{dir>0?inp.stepUp():inp.stepDown();inp.dispatchEvent(new Event('input',{bubbles:true}));inp.focus()};return b};
+  st.append(bt(1,'Aumentar'),bt(-1,'Diminuir'));inp.parentNode.insertBefore(w,inp);w.append(inp,st);
+}
+
+function melhorarMes(inp){
+  if(inp.dataset.dd)return;inp.dataset.dd='1';
+  const w=mkEl('div','dd mes'),b=mkEl('button','dd-b'),p=mkEl('div','mes-p');let ano=+inp.value.slice(0,4)||new Date().getFullYear();
+  b.type='button';b.setAttribute('aria-haspopup','dialog');b.setAttribute('aria-expanded','false');p.setAttribute('role','dialog');p.setAttribute('aria-label','Escolher o mês');
+  if(inp.id){b.id=inp.id;inp.removeAttribute('id')}
+  const rot=()=>{b.textContent='';b.append(mkEl('span',inp.value?'':'ph',inp.value?mesFmt(inp.value):'Selecione o mês'))},
+    fechar=()=>{w.classList.remove('aberto');b.setAttribute('aria-expanded','false')},
+    dar=v=>{inp.value=v;rot();fechar();b.focus();inp.dispatchEvent(new Event('input',{bubbles:true}))},
+    botao=(t,rot,fn,pressed)=>{const x=mkEl('button','',t);x.type='button';if(rot)x.setAttribute('aria-label',rot);if(pressed!=null)x.setAttribute('aria-pressed',String(pressed));x.onclick=fn;return x},
+    desenhar=()=>{
+      p.textContent='';
+      const h=mkEl('div','mes-h'),g=mkEl('div','mes-g'),f=mkEl('div','mes-f');
+      h.append(botao('‹','Ano anterior',()=>{ano--;desenhar()}),mkEl('span','',String(ano)),botao('›','Próximo ano',()=>{ano++;desenhar()}));
+      MES.forEach((m,i)=>{const v=`${ano}-${String(i+1).padStart(2,'0')}`;g.append(botao(m,'',()=>dar(v),inp.value==v))});
+      f.append(botao('Limpar','',()=>dar('')));p.append(h,g,f);
+    };
+  b.onclick=()=>{if(w.classList.contains('aberto'))return fechar();fecharTodos(w);ano=+inp.value.slice(0,4)||ano;desenhar();w.classList.add('aberto');b.setAttribute('aria-expanded','true');abreParaCima(w,b,260)};
+  w.onkeydown=e=>{if(e.key=='Escape'&&w.classList.contains('aberto')){e.stopPropagation();fechar();b.focus()}};
+  rot();inp.style.display='none';inp.parentNode.insertBefore(w,inp);w.append(b,p,inp);
+}
+
+function melhorar(){
+  document.querySelectorAll('#mn select').forEach(melhorarSelect);
+  document.querySelectorAll('#mn input[type=number]').forEach(melhorarNumero);
+  document.querySelectorAll('#mn input[type=month]').forEach(melhorarMes);
 }
 
 /* ---------- telas ---------- */
 const rota=()=>location.hash=='#/modelos'?'modelos':'ranking';
 
+function cabRanking(){
+  const mo=modeloAtivo();
+  return`<div class="head cab-modelo"><h1>Fila de atendimento</h1>${mo?`<div class="sel-modelo"><label for="f-modelo">Modelo</label><select id="f-modelo" onchange="usarModelo(this.value)">${S.modelos.map(x=>`<option value="${esc(x.id)}" ${x.id==S.ativo?'selected':''}>${esc(x.titulo)}</option>`).join('')}</select></div>`:''}</div>`;
+}
 function viewRanking(){
   const r=S.rank;
-  if(!r)return`<div class="head"><h1>Fila de atendimento</h1></div><div class="card"><p class="mut">Carregando a fila…</p></div>`;
+  if(!S.modelos.length)return`<div class="head"><h1>Fila de atendimento</h1></div><div class="card semmodelo" role="status"><h2>Nenhum modelo treinado</h2><p class="mut">A fila de atendimento é gerada por um modelo. Treine o primeiro na aba Modelos.</p><a class="btn" href="#/modelos">Ir para Modelos</a></div>`;
+  if(!r)return cabRanking()+`<div class="card"><p class="mut">Carregando a fila…</p></div>`;
   const uniq=k=>[...new Set(r.map(c=>c[k]))].sort((a,b)=>String(a).localeCompare(b,'pt-BR')),
     sel=(k,fk,id,rot)=>`<label for="${id}">${rot}</label><select id="${id}" onchange="setF('${fk}',this.value)"><option value="">Todos</option>${uniq(k).map(v=>`<option value="${esc(v)}" ${F[fk]===v?'selected':''}>${esc(v)}</option>`).join('')}</select>`;
-  return`<div class="head"><h1>Fila de atendimento</h1></div>
+  return cabRanking()+`
 <div class="fila"><div class="card" id="fila"></div>
 <aside class="card filtros" aria-label="Filtros"><h2>Filtros</h2>
 <label for="f-q" style="margin-top:0">Buscar cliente</label><input id="f-q" type="search" placeholder="Ex.: C017" value="${esc(F.q)}" oninput="setF('q',this.value)">
@@ -447,10 +596,12 @@ ${a.series.map((sr,i)=>`<div class="ag"><h3>${i+1}. ${esc(sr.rotulo)} <span clas
 
 function viewTreinar(){
   const head=`<div class="head"><h1>Modelos</h1></div>`;
+  const lista=S.modelos.length?`<div class="card"><h2>Modelos treinados</h2><div class="tw" style="margin-top:8px"><table><tr><th>Título</th><th>Algoritmo</th><th>Base</th><th>Criado em</th><th>Variáveis</th><th>Pesos</th><th>AUC</th><th></th></tr>
+${[...S.modelos].reverse().map(x=>`<tr><td><b>${esc(x.titulo)}</b>${x.id==S.ativo?' <span class="chip">em uso no ranking</span>':''}</td><td>${esc(x.algoritmo)}</td><td>${esc(x.base)}</td><td class="num">${dataHora(x.criado_em)}</td><td class="num">${x.variaveis}</td><td>${x.modo=='manual'?'Manual':'Automático'}</td><td class="num">${String(x.auc).replace('.',',')}</td><td><button class="btn ghost sm" onclick="usarModelo('${esc(x.id)}',true)">Ver ranking</button></td></tr>`).join('')}</table></div></div>`:'';
   const dados=`<div class="card ${S.sheets?'ok':''}"><h2><span class="n">1</span>Dados</h2><div class="drop" tabindex="0" role="button" onclick="$('fi').click()" onkeydown="if(event.key=='Enter'||event.key==' '){event.preventDefault();$('fi').click()}" ondragover="event.preventDefault()" ondrop="event.preventDefault();load(event.dataTransfer.files[0])"><input id="fi" type="file" accept=".xlsx,.xls,.csv" hidden onchange="load(this.files[0])"><b>Clique ou arraste um csv/xlsx</b><p class="mut">${S.file?esc(S.file):'Nenhum arquivo selecionado'}</p></div>
-<p style="margin-top:10px"><a href="#/modelos" onclick="setData(demo(),'dados_demonstracao.xlsx');return false">ou usar dados de demonstração</a></p>
+<p style="margin-top:10px"><a href="#/modelos" onclick="carregarDemo();return false">ou usar dados de demonstração</a></p>
 ${S.sheets?`<div class="tabs">${Object.entries(S.sheets).map(([n,r])=>`<span class="chip">${esc(n)} · ${r.length} linhas · ${colsOf(n).length} colunas</span>`).join('')}</div>`:''}</div>`;
-  if(!S.sheets)return head+dados;
+  if(!S.sheets)return head+lista+dados;
   const m=S.m;
   const mapa=`<div class="card"><h2><span class="n">2</span>O que prever</h2><p class="sub mut">Sugerimos automaticamente; confira e corrija se preciso.</p><div class="form">
 ${par('Tabela de clientes e coluna do identificador','tab','id',m.tab,m.id)}
@@ -468,17 +619,23 @@ ${c.length?`<div style="display:flex;gap:8px;margin-bottom:6px"><button class="b
 ${Object.entries(grp).map(([s,l])=>`<div class="vgrp"><h3>${esc(s)}</h3>${l.map(x=>`<div class="var"><label><input type="checkbox" ${isSel(x.k)?'checked':''} onchange="setSel(${kq(x)},this.checked)"> ${esc(x.c)}</label>${S.modo=='manual'&&isSel(x.k)?`<input type="range" min="0" max="1" step=".05" value="${peso(x.k)}" aria-label="Peso de ${esc(x.c)}" oninput="setPeso(this,${kq(x)})"><span class="pv">${peso(x.k).toFixed(2)}</span>`:''}</div>`).join('')}</div>`).join('')}</div>`;
   let fim;
   if(S.treino){const p=S.treino.passo;fim=`<div class="card" style="text-align:center" role="status"><h2 style="justify-content:center">Treinando o modelo</h2><div class="ring"></div><p class="mut">${PASSOS[Math.min(p,PASSOS.length-1)]}…</p><div class="bar" style="margin-top:12px"><i style="width:${p/PASSOS.length*100}%"></i></div></div>`}
-  else fim=`<div class="card ${S.treinado?'ok':''}"><h2><span class="n">4</span>Treinar</h2>${S.treinado?`<p class="sub mut">Modelo treinado em ${S.treinado.quando} com ${S.treinado.vars} variáveis (simulado). A fila continua sendo a de demonstração.</p><a class="btn" href="#/ranking" style="display:inline-block;text-decoration:none">Ver a fila</a> `:'<p class="sub mut">Confirme o mapeamento e os pesos acima.</p>'}<button class="btn ${S.treinado?'ghost':''}" onclick="treinar()">${S.treinado?'Treinar de novo':'Treinar modelo'}</button></div>`;
-  return head+dados+mapa+analise+pesos+fim;
+  else{
+    if(!S.titulo)S.titulo=sugestaoTitulo();
+    const cr=S.modelos.find(x=>x.id==S.criado);
+    fim=`<div class="card ${cr?'ok':''}"><h2><span class="n">4</span>Treinar</h2>${cr?`<p class="sub mut">Modelo “${esc(cr.titulo)}” treinado em ${dataHora(cr.criado_em)} com ${cr.variaveis} variáveis (simulado).</p>`:'<p class="sub mut">Confirme o mapeamento e os pesos acima.</p>'}
+<div style="max-width:420px;margin-bottom:14px"><label for="t-titulo" style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">Título do modelo (único)</label><input id="t-titulo" value="${esc(S.titulo)}" maxlength="60" oninput="S.titulo=this.value"></div>
+${cr?`<button class="btn" onclick="usarModelo('${esc(cr.id)}',true)">Ver a fila deste modelo</button> `:''}<button class="btn ${cr?'ghost':''}" onclick="treinar()">${cr?'Treinar outro modelo':'Treinar modelo'}</button></div>`;
+  }
+  return head+lista+dados+mapa+analise+pesos+fim;
 }
 
 function render(){
   const r=rota();
   document.querySelectorAll('.side nav a').forEach(a=>a.id=='n-'+r?a.setAttribute('aria-current','page'):a.removeAttribute('aria-current'));
-  $('modelo').innerHTML=S.treinado?`<b>Modelo treinado</b>${S.treinado.quando} · ${S.treinado.vars} variáveis`:'';
   $('mn').className='main'+(r=='modelos'?' estreito':'');
   $('mn').innerHTML=r=='modelos'?viewTreinar():viewRanking();
   if(r=='ranking'&&S.rank)pintarFila();
+  melhorar();
 }
 window.addEventListener('hashchange',()=>{fechar();render();window.scrollTo(0,0)});
 
@@ -500,5 +657,4 @@ function demo(){
 
 /* ---------- início ---------- */
 render();
-api.ranking().then(r=>{S.rank=r;if(rota()=='ranking')render()});
 </script></body></html>
