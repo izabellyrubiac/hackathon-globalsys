@@ -11,7 +11,7 @@ import type { ReactElement } from 'react'
 import type { PaginaClientes, Validacao } from './api/tipos'
 import { GraficoSeries } from './componentes/GraficoSeries'
 import { Sparkline } from './componentes/Sparkline'
-import { LinhaFila, ResumoFila } from './paginas/Fila'
+import { LinhaFila } from './paginas/Fila'
 import { GavetaCliente } from './paginas/GavetaCliente'
 import { ConteudoValidacao } from './paginas/Validacao'
 import { analisar } from './analise/exploratoria'
@@ -53,8 +53,6 @@ async function main() {
   const comHistorico = detalhado.clientes[0]!
 
   console.log('tela Fila')
-  conferir('tira de resumo', <ResumoFila dados={fila} />,
-           ['58', 'clientes ativos', 'em risco alto', 'R$ 242.145', 'jun/2026'])
   conferir('linha do primeiro da fila',
            <table><tbody><LinhaFila c={primeiro} temValor aoAbrir={() => {}} /></tbody></table>,
            [primeiro.cliente_id, '>1<', 'fx atencao', 'R$ ', '16%', primeiro.evidencias[0]!.titulo])
@@ -155,8 +153,6 @@ async function main() {
     clientes: fila.clientes.map((c) => ({ ...c, valor_mensal: null,
                                           perda_anual_esperada: null, perda_anual_ajustada: null })),
   }
-  conferir('resumo sem coluna de valor', <ResumoFila dados={semValor} />,
-           ['clientes ativos', 'em risco alto'])
   conferir('fila sem coluna de valor',
            <table><tbody>{semValor.clientes.slice(0, 5).map((c) => (
              <LinhaFila key={c.cliente_id} c={c} temValor={false} aoAbrir={() => {}} />

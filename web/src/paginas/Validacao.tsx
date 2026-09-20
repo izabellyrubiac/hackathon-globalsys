@@ -92,7 +92,6 @@ function VerMais({ restantes, aoPedir }: { restantes: number; aoPedir: () => voi
 export function ConteudoValidacao({ v }: { v: TValidacao }) {
   const desligada = !v.metodos?.length
   const p = v.painel || {}
-  const motorAlto = v.metodos?.find((m) => m.id === 'motor_alto')
   const aucMotor = v.auc_por_mes?.filter((a) => a.score === 'motor') ?? []
   const aucVar = v.auc_por_mes?.filter((a) => a.score === 'melhor_variavel') ?? []
   const logistica = v.escolha?.modelo === 'logistica'
@@ -102,24 +101,6 @@ export function ConteudoValidacao({ v }: { v: TValidacao }) {
 
   return (
     <>
-      <div className="kpis">
-        <div className="kpi"><b>{p.clientes ?? '—'}</b><span>clientes na base</span></div>
-        <div className="kpi alto"><b>{p.cancelados ?? '—'}</b><span>cancelaram</span></div>
-        <div className="kpi"><b>{p.ativos ?? '—'}</b><span>continuam ativos</span></div>
-        {motorAlto && (
-          <>
-            <div className="kpi">
-              <b>{motorAlto.canc_k1} de {p.cancelados}</b>
-              <span>pegos na faixa alto no último mês</span>
-            </div>
-            <div className="kpi">
-              <b>{motorAlto.antecedencia_mediana ?? '—'} {motorAlto.antecedencia_mediana === 1 ? 'mês' : 'meses'}</b>
-              <span>antecedência mediana</span>
-            </div>
-          </>
-        )}
-      </div>
-
       {/* --------------------------------------------------- modelo escolhido */}
       <div className="card">
         <h2>Modelo escolhido</h2>

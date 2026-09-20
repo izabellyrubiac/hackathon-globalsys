@@ -8,7 +8,7 @@
 import { useMemo, useState } from 'react'
 import * as api from '../api/cliente'
 import { useRecurso } from '../api/ganchos'
-import type { BaseResumo, ClienteFila, Faixa as TFaixa, PaginaClientes } from '../api/tipos'
+import type { BaseResumo, ClienteFila, Faixa as TFaixa } from '../api/tipos'
 import { Carregando, CaixaErro, Vazio } from '../componentes/Estados'
 import { Chip, Desativado, Faixa } from '../componentes/Faixa'
 import { CampoSelect, Select } from '../componentes/Select'
@@ -18,7 +18,7 @@ import {
   type Filtros,
 } from '../dominio'
 import { useSessao } from '../estado/Sessao'
-import { brl, mesFmt, pc, sg } from '../formato'
+import { brl, pc, sg } from '../formato'
 import { irPara } from '../rotas'
 import { GavetaCliente } from './GavetaCliente'
 
@@ -95,7 +95,6 @@ export function Fila({ bases, carregandoBases }: { bases: BaseResumo[]; carregan
 
       {dados && (
         <>
-          <ResumoFila dados={dados} />
           <div className="fila">
             <div className="card" id="fila">
               <div className="cab">
@@ -253,29 +252,5 @@ export function LinhaFila({ c, temValor, aoAbrir }: {
           : <span className="mut">—</span>}
       </td>
     </tr>
-  )
-}
-
-export function ResumoFila({ dados }: { dados: PaginaClientes }) {
-  const r = dados.resumo
-  if (!r) return null
-  return (
-    <>
-      <p className="mut" style={{ margin: '-8px 0 14px' }}>
-        {dados.modelo?.rotulo} · mês de referência {mesFmt(dados.mes_referencia)}
-        {dados.modelo && <> · prevê cancelamento nos próximos {dados.modelo.horizonte_meses} meses</>}
-      </p>
-      <div className="kpis">
-        <div className="kpi"><b>{r.clientes_ativos}</b><span>clientes ativos</span></div>
-        <div className="kpi alto"><b>{r.em_risco_alto}</b><span>em risco alto</span></div>
-        <div className="kpi atencao"><b>{r.em_atencao}</b><span>em atenção</span></div>
-        {r.receita_em_risco_mensal != null && (
-          <div className="kpi"><b>{brl(r.receita_em_risco_mensal)}</b><span>receita mensal em risco</span></div>
-        )}
-        {r.perda_anual_esperada_total != null && (
-          <div className="kpi"><b>{brl(r.perda_anual_esperada_total)}</b><span>perda anual esperada</span></div>
-        )}
-      </div>
-    </>
   )
 }
