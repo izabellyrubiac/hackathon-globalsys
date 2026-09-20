@@ -17,7 +17,8 @@ atendimento explicada**: o risco de cada cliente, as variáveis que estão dispa
 | `experimentos/` | Tudo que é exploração e não faz parte do produto: `inovaapps/` (notebooks 01 exploração, 02 sinais, 03 score, mais o mapeamento da base), `redes/` (preparo e treino das bases reais) e `delta_risco.py`. |
 | `dados/` | `desafio/` (xlsx e PDF do desafio), `amostra_redes/` (bases reais, fora do git) e `bases/` (uploads da API, fora do git). |
 | `api/` | API FastAPI: enviar base, mapear, treinar, comparar versões e servir a fila. |
-| `web/` | Frontend (a próxima etapa). Hoje só `web/public/data/` com os JSON do notebook 03. |
+| `web/` | O app: React + Vite + TypeScript. Três telas — Modelos, Fila e Validação — falando com a API. |
+| `frontend/` | O protótipo em HTML que deu origem ao app. Referência visual; não se edita. |
 | `tests/` | Testes do motor. Os da API ficam em `api/tests/`. |
 
 Ambiente Python com **uv**. Não há banco de dados: bases e resultados são arquivos.
@@ -29,6 +30,31 @@ uv run python -m api.preparar_demos       # deixa as bases INOVAAPPS e redes tre
 uv run uvicorn api.main:app --reload      # API em http://localhost:8000/docs
 uv run jupyter lab                        # notebooks em experimentos/inovaapps/
 ```
+
+E o app, noutro terminal:
+
+```bash
+cd web
+npm install
+npm run dev          # http://localhost:5173 — o proxy leva /api para a API na 8000
+npm run build        # bundle de produção em web/dist/
+```
+
+A API precisa estar no ar antes do `npm run dev`; a tela diz claramente quando não está.
+
+Como a IA não faz conferência visual neste projeto, a verificação do front é executar e checar
+números — as duas suítes rodam contra a API de pé, com a base INOVAAPPS:
+
+```bash
+npm run checar       # tipos
+npm run verificar    # as funções da tela contra os números que a API devolve
+npm run renderizar   # renderiza cada tela com os dados reais, mais os casos-limite
+```
+
+`verificar` confere, entre outras coisas, que a ordem da fila é a do motor e que filtrar não a
+refaz, e que a soma da perda anual bate com o resumo. `renderizar` monta as telas de verdade e
+pega o que só aparece na montagem — campo nulo, base sem coluna de valor, cliente sem nenhum
+sinal, validação desligada, modelo de árvore sem coeficientes.
 
 ## Como o motor funciona
 
@@ -96,6 +122,18 @@ como avançada. Resultados em `dados/amostra_redes/resultado/delta/` e script em
    peso de cada variável.
 
 A coluna de cancelamento **nunca** vira variável, e a API nunca reordena a fila: só filtra.
+
+## App (`web/`)
+
+| Tela | O que mostra |
+|---|---|
+| **Fila** | A fila explicada: posição, faixa, risco, variação vs. o mês anterior, perda anual esperada e os sinais que dispararam. Clicar num cliente abre o painel com as evidências, os gráficos de 18 meses e a ação sugerida. Os filtros são gerados a partir dos atributos que a base tiver. |
+| **Modelos** | Enviar uma base, confirmar o que prever (a partir da leitura que o motor faz), escolher quais colunas entram, e treinar. Cada treino vira uma versão, com progresso real vindo do motor; a lista permite trocar qual versão vale e apagar as outras. |
+| **Validação** | Os três critérios da banca: com quanta antecedência o sinal aparece, o quanto separa quem ficou, e o que acontece no topo da fila — mais os 22 que saíram, com o risco que o modelo dava a cada um antes da saída. |
+
+O app **nunca reordena a fila**: a ordem é a `prioridade` que o motor devolve, e filtrar só esconde
+linhas. Onde a tela pediria algo que o motor não sustenta, o controle fica visível e desativado,
+com o motivo à mostra — a lista está em [`PENDENCIAS-MOTOR.md`](PENDENCIAS-MOTOR.md).
 
 `uv run python -m api.preparar_demos` deixa as duas bases prontas: a INOVAAPPS em ~30 s e a das redes em
 ~9,5 min (inspeção mais treino). É idempotente: rodar de novo não refaz nada, a menos de `--forcar`.

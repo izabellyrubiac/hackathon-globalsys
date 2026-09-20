@@ -1,0 +1,5 @@
+node_modules/
+dist/
+# saída temporária do `npm run renderizar` (esbuild compila para o Node executar)
+.render.cjs
+tsconfig.tsbuildinfo

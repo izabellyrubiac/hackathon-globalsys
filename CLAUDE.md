@@ -33,8 +33,8 @@ Documentos de origem, em `dados/desafio/`: `Desafio - INOVAAPPS 2026.pdf` e `INO
 | Avaliação e escolha dos modelos (um arquivo por método: validação cruzada, métricas, escolha) | Python, pandas | `motor/modelos_classificacao/` |
 | Análise da base INOVAAPPS e experimentos (notebooks, bases reais, delta de risco) | Jupyter (Plotly), usa o `motor/` | `experimentos/` |
 | API (upload, mapeamento, treino, versões de modelo, resultados) | FastAPI | `api/` |
-| Frontend | Next.js + React + TypeScript | `web/` |
-| Visual | Tailwind + shadcn/ui + Recharts | `web/` |
+| Frontend | React + Vite + TypeScript | `web/` |
+| Visual | CSS próprio (portado do protótipo) e gráficos em SVG | `web/src/estilo.css`, `web/src/componentes/` |
 
 O ambiente Python usa **uv** (`uv sync`, `uv run ...`). Não existe banco de dados: as bases enviadas e os resultados ficam em arquivos (`dados/bases/<id>/`).
 
@@ -62,13 +62,15 @@ O ambiente Python usa **uv** (`uv sync`, `uv run ...`). Não existe banco de dad
 - `analista-dados`: EDA, motor genérico (variáveis, seleção supervisionada, score) e validação com histórico.
 - `engenheiro-dados`: leitura de bases arbitrárias, inferência de esquema e o contrato do JSON de resultado.
 - `dev-backend`: API FastAPI em `api/` (upload, mapeamento, treino, execuções/versões, resultados).
-- `dev-frontend`: app Next.js, páginas (upload/mapeamento, fila, cliente, validação), tipos e chamadas à API.
-- `designer-ui`: visual, componentes shadcn, gráficos Recharts e acessibilidade.
+- `dev-frontend`: app React + Vite em `web/`, telas (Modelos, Fila, Validação), tipos e chamadas à API.
+- `designer-ui`: visual, CSS do projeto, gráficos em SVG e acessibilidade.
 
 ## Convenções
 - Todo o produto fica em **português (pt-BR)**: interface, nomes de colunas e de campos do JSON. Valores usam `R$ 12.345` e datas usam `jun/2026`.
 - Cores de status fixas em todo o projeto: **Cancelou/risco alto = vermelho**, **atenção = âmbar**, **ativo/saudável = azul-acinzentado**.
 - Notebooks têm quase nenhum texto. Os gráficos precisam se explicar sozinhos, com título descritivo, eixos nomeados e legenda.
 - **Fila** (`motor/`): ordenada pela **perda anual ajustada pelo delta** = `min(p + máx(Δp, 0), 1) × valor do contrato × 12`, onde Δp é o risco do mês de referência menos o do mês anterior (quem piorou é mais urgente; queda não rebaixa). Sem coluna de valor, só `min(p + máx(Δp, 0), 1)`. `Config.delta_na_fila=False` volta à ordem por `p × valor × 12`. O delta vai sempre no JSON (`delta_risco`, `risco_ajustado`, `perda_anual_ajustada`), com o delta fora do modelo. A `perda_anual_esperada` (`p × valor × 12`) continua no JSON e é a que soma no resumo — decisão do time; o frontend não reordena por faixa. Faixas (alto/atencao/baixo) vêm de cortes de probabilidade, **nunca** de limite de capacidade da equipe; todos os ativos entram na fila. A tela deve mostrar a faixa ao lado da posição.
-- A pasta `frontend/` na raiz veio de fora deste trabalho: **ignorar**. O app oficial é `web/`.
+- A pasta `frontend/` na raiz é o **protótipo** (`consul-oraculo.html`, HTML monolítico com dados fictícios): serve de referência visual e **não se edita**. O app é `web/`.
+- **O motor não se edita.** Quando a tela pede algo que o motor não sustenta, o controle fica visível e desativado, com o motivo à mostra; a explicação vai para `PENDENCIAS-MOTOR.md`, e `web/src/desativado.ts` é a fonte de verdade da interface.
+- O front **nunca reordena a fila**: a ordem é a `prioridade` que o motor devolve, e filtrar só esconde linhas.
 - **A IA não faz conferência visual**: não renderiza gráficos em PNG (kaleido etc.), não tira screenshots e não abre navegador para conferir telas. A verificação é só executar o código sem erros e checar os números; a revisão visual fica com o time.
