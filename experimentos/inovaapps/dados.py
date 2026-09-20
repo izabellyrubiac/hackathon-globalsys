@@ -27,7 +27,7 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import roc_auc_score
 
-ARQUIVO = Path(__file__).resolve().parent.parent / "INOVAAPPS_base_de_dados.xlsx"
+ARQUIVO = Path(__file__).resolve().parents[2] / "dados" / "desafio" / "INOVAAPPS_base_de_dados.xlsx"
 
 MES_FINAL = pd.Period("2026-06", "M")          # último mês observado
 MES_SAIDA_ATIVOS = MES_FINAL + 1               # jul/2026

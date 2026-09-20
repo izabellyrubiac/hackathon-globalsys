@@ -14,7 +14,8 @@ atendimento explicada**: o risco de cada cliente, as variáveis que estão dispa
 | `motor/` | O motor genérico: lê a base, infere o esquema, gera variáveis, **escolhe sozinho as que importam**, treina, valida e explica. Não tem nada específico de uma base. |
 | `motor/modelos_previsao/` | Um arquivo por modelo: `logistica.py`, `lightgbm.py`, `random_forest.py` (mais `base.py` e `_arvores.py`). |
 | `motor/modelos_classificacao/` | Um arquivo por método de avaliação: `validacao_cruzada.py`, `metricas.py`, `escolha.py` (qual modelo vence). |
-| `analise/` | Notebooks da base do desafio (01 exploração, 02 sinais, 03 score) e os scripts das bases reais (`redes/`, `experimentos/`). |
+| `experimentos/` | Tudo que é exploração e não faz parte do produto: `inovaapps/` (notebooks 01 exploração, 02 sinais, 03 score, mais o mapeamento da base), `redes/` (preparo e treino das bases reais) e `delta_risco.py`. |
+| `dados/` | `desafio/` (xlsx e PDF do desafio), `amostra_redes/` (bases reais, fora do git) e `bases/` (uploads da API, fora do git). |
 | `api/` | API FastAPI: enviar base, mapear, treinar, comparar versões e servir a fila. |
 | `web/` | Frontend (a próxima etapa). Hoje só `web/public/data/` com os JSON do notebook 03. |
 | `tests/` | Testes do motor. Os da API ficam em `api/tests/`. |
@@ -26,7 +27,7 @@ uv sync                                   # instala tudo
 uv run pytest -q                          # testes do motor + da API (o marcador `lento` fica de fora)
 uv run python -m api.preparar_demos       # deixa as bases INOVAAPPS e redes treinadas e prontas
 uv run uvicorn api.main:app --reload      # API em http://localhost:8000/docs
-uv run jupyter lab                        # notebooks em analise/
+uv run jupyter lab                        # notebooks em experimentos/inovaapps/
 ```
 
 ## Como o motor funciona
@@ -52,10 +53,10 @@ refeita dentro de cada dobra.
 
 | Base | O que é | Como preparar |
 |---|---|---|
-| **INOVAAPPS** | O desafio: 80 clientes, 18 meses, 22 cancelamentos. | `INOVAAPPS_base_de_dados.xlsx` na raiz. `uv run python analise/gerar_json.py` gera os JSON de `web/public/data/`. |
-| **Redes (real)** | 3.000 clientes de 35 redes de postos, 1,6 M de vendas. | `uv run python analise/redes/preparar.py` → `amostra_redes/base_motor/*.csv`. Depois `uv run python analise/redes/rodar.py`. |
+| **INOVAAPPS** | O desafio: 80 clientes, 18 meses, 22 cancelamentos. | `dados/desafio/INOVAAPPS_base_de_dados.xlsx`. `uv run python experimentos/inovaapps/gerar_json.py` gera os JSON de `web/public/data/`. |
+| **Redes (real)** | 3.000 clientes de 35 redes de postos, 1,6 M de vendas. | `uv run python experimentos/redes/preparar.py` → `dados/amostra_redes/base_motor/*.csv`. Depois `uv run python experimentos/redes/rodar.py`. |
 
-As bases reais não têm campo de cancelamento. A regra que o time definiu (em `analise/preparo_comum.py`):
+As bases reais não têm campo de cancelamento. A regra que o time definiu (em `experimentos/redes/preparo_comum.py`):
 **um mês sem nenhuma compra é um cancelamento**, e depois disso o cliente não é reavaliado. O último mês da
 exportação, incompleto, fica de fora. Pela regra, a base das redes fica com 2.910 clientes, 1.840
 cancelados e 1.070 ativos — e foi a primeira vez que as árvores ficaram elegíveis com dados reais: o
@@ -71,8 +72,8 @@ acerto? Resposta medida: **não**.
 - Ligá-lo custa **3,2× o tempo de treino**.
 
 O código continua em `motor/delta.py`, desligado (`Config.delta_risco = False`), e a API aceita a opção
-como avançada. Resultados em `amostra_redes/resultado/delta/` e script em
-`analise/experimentos/delta_risco.py`.
+como avançada. Resultados em `dados/amostra_redes/resultado/delta/` e script em
+`experimentos/delta_risco.py`.
 
 ## API
 

@@ -9,7 +9,7 @@ import pytest
 from motor import Mapeamento, inspecionar, ler_arquivos, treinar
 
 RAIZ = Path(__file__).resolve().parent.parent
-XLSX = RAIZ / "INOVAAPPS_base_de_dados.xlsx"
+XLSX = RAIZ / "dados" / "desafio" / "INOVAAPPS_base_de_dados.xlsx"
 GERADO = "2026-01-01"
 
 

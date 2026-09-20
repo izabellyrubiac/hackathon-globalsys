@@ -8,7 +8,7 @@ API_VALIDACAO_SINCRONA_MB  acima disso, o mapeamento só passa pela conferência
 API_TREINOS_SIMULTANEOS    quantos treinos rodam ao mesmo tempo (padrão 1); os demais esperam na fila
 API_DEMO                   "0" desliga as bases de demonstração
 API_DEMO_ARQUIVO           caminho do .xlsx da demonstração INOVAAPPS (padrão na raiz do projeto)
-API_DEMO_REDES             pasta com os .csv da demonstração `redes` (padrão amostra_redes/base_motor)
+API_DEMO_REDES             pasta com os .csv da demonstração `redes` (padrão dados/amostra_redes/base_motor)
 """
 
 from __future__ import annotations
@@ -58,12 +58,12 @@ def demo_ligada() -> bool:
 
 
 def arquivo_demo() -> Path:
-    bruto = os.environ.get("API_DEMO_ARQUIVO") or (RAIZ_PROJETO / "INOVAAPPS_base_de_dados.xlsx")
+    bruto = os.environ.get("API_DEMO_ARQUIVO") or (RAIZ_PROJETO / "dados" / "desafio" / "INOVAAPPS_base_de_dados.xlsx")
     return Path(bruto).expanduser()
 
 
 def pasta_demo_redes() -> Path:
-    bruto = os.environ.get("API_DEMO_REDES") or (RAIZ_PROJETO / "amostra_redes" / "base_motor")
+    bruto = os.environ.get("API_DEMO_REDES") or (RAIZ_PROJETO / "dados" / "amostra_redes" / "base_motor")
     return Path(bruto).expanduser()
 
 

@@ -1,6 +1,6 @@
 """Gera os JSON estáticos do app a partir do motor genérico com o mapeamento da INOVAAPPS (`score.rodar`).
 
-Uso:  uv run python analise/gerar_json.py
+Uso:  uv run python experimentos/inovaapps/gerar_json.py
 
 Saídas em `web/public/data/` — contrato documentado em `motor/saida.py`:
 * clientes.json   fila dos ativos (ordem = perda anual esperada), evidências, ação e histórico mensal;
@@ -20,7 +20,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from score import rodar  # noqa: E402
 
-SAIDA = Path(__file__).resolve().parent.parent / "web" / "public" / "data"
+SAIDA = Path(__file__).resolve().parents[2] / "web" / "public" / "data"
 
 
 def verificar(r) -> None:

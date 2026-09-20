@@ -1,2 +1,10 @@
-amostra_redes/
-dados/
+dados/bases/
+dados/amostra_redes/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.pytest_cache/
+.venv/
+node_modules/
+dist/
+.env

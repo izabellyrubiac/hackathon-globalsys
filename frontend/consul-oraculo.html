@@ -271,8 +271,7 @@ function viewRanking(){
   const n=f=>r.filter(c=>c.faixa==f).length,receita=r.filter(c=>c.faixa=='alto').reduce((s,c)=>s+c.valor_mensal,0),
     uniq=k=>[...new Set(r.map(c=>c[k]))].sort((a,b)=>String(a).localeCompare(b,'pt-BR')),
     sel=(k,fk,id,rot)=>`<label for="${id}">${rot}</label><select id="${id}" onchange="setF('${fk}',this.value)"><option value="">Todos</option>${uniq(k).map(v=>`<option value="${esc(v)}" ${F[fk]===v?'selected':''}>${esc(v)}</option>`).join('')}</select>`;
-  return`<div class="head"><h1>Fila de atendimento</h1><p class="mut">Ordem de atendimento pela perda anual esperada (probabilidade de cancelar × valor do contrato × 12). O primeiro da lista é o primeiro a ser atendido.</p></div>
-<div class="aviso">Fila de demonstração, com dados de exemplo. A fila real virá do backend depois que o modelo for treinado.</div>
+  return`<div class="head"><h1>Fila de atendimento</h1></div>
 <div class="kpis">${[['Clientes ativos',r.length],['Risco alto',n('alto')],['Atenção',n('atencao')],['Receita mensal em risco alto',brl(receita)],['Cancelados no histórico',CANCELADOS_HISTORICO]].map(([l,v])=>`<div class="card kpi"><b>${v}</b><span class="mut">${l}</span></div>`).join('')}</div>
 <div class="fila"><div class="card" id="fila"></div>
 <aside class="card filtros" aria-label="Filtros"><h2>Filtros</h2>
@@ -328,7 +327,7 @@ const setSel=(k,v)=>{S.sel[k]=v;render()};
 const setPeso=(el,k)=>{S.w[k]=+el.value;el.nextElementSibling.textContent=(+el.value).toFixed(2)};
 
 function viewTreinar(){
-  const head=`<div class="head"><h1>Modelos</h1><p class="mut">Envie a base, diga onde estão os clientes e o que deve ser previsto, ajuste os pesos e treine. O treino real acontece no backend; por enquanto ele é simulado.</p></div>`;
+  const head=`<div class="head"><h1>Modelos</h1></div>`;
   const dados=`<div class="card ${S.sheets?'ok':''}"><h2><span class="n">1</span>Dados</h2><p class="sub mut">Um .xlsx com várias abas ou um .csv. Cada tabela precisa ter a coluna que identifica o cliente.</p>
 <div class="drop" tabindex="0" role="button" onclick="$('fi').click()" onkeydown="if(event.key=='Enter'||event.key==' '){event.preventDefault();$('fi').click()}" ondragover="event.preventDefault()" ondrop="event.preventDefault();load(event.dataTransfer.files[0])"><input id="fi" type="file" accept=".xlsx,.xls,.csv" hidden onchange="load(this.files[0])"><b>Clique ou arraste o arquivo aqui</b><p class="mut">${S.file?esc(S.file):'Nenhum arquivo selecionado'}</p></div>
 <p style="margin-top:10px"><a href="#/modelos" onclick="setData(demo(),'dados_demonstracao.xlsx');return false">ou usar dados de demonstração</a></p>

@@ -15,13 +15,13 @@ Tudo out-of-fold (`p_oof`, probabilidade de um modelo que não viu aquele client
 diferença **pareada por dobra** ± erro-padrão: é o que separa ganho real de ruído.
 
 Uso:
-    uv run python analise/experimentos/delta_risco.py --braco a        # roda e grava o braço A
-    uv run python analise/experimentos/delta_risco.py --braco b        # … e o braço B
-    uv run python analise/experimentos/delta_risco.py --braco comparar  # A × B × C
-    uv run python analise/experimentos/delta_risco.py --braco inovaapps # referência pequena (A × B)
-    uv run python analise/experimentos/delta_risco.py                   # a, b e comparar em sequência
+    uv run python experimentos/delta_risco.py --braco a        # roda e grava o braço A
+    uv run python experimentos/delta_risco.py --braco b        # … e o braço B
+    uv run python experimentos/delta_risco.py --braco comparar  # A × B × C
+    uv run python experimentos/delta_risco.py --braco inovaapps # referência pequena (A × B)
+    uv run python experimentos/delta_risco.py                   # a, b e comparar em sequência
 
-Saída: `amostra_redes/resultado/delta/*.json` (+ `*_painel.csv.gz`, dados brutos out-of-fold).
+Saída: `dados/amostra_redes/resultado/delta/*.json` (+ `*_painel.csv.gz`, dados brutos out-of-fold).
 Com `--min-hist` diferente do padrão (4), tudo vai para a subpasta `hist<N>/`.
 Nada em `web/public/data/` é tocado: o padrão de produção continua sem delta.
 """
@@ -38,11 +38,11 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-RAIZ = Path(__file__).resolve().parents[2]
+RAIZ = Path(__file__).resolve().parents[1]
 if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
 
-from analise.redes.rodar import carregar, mapeamento  # noqa: E402
+from experimentos.redes.rodar import carregar, mapeamento  # noqa: E402
 from motor.config import Config  # noqa: E402
 from motor.modelos_classificacao.metricas import (  # noqa: E402
     KS, auc_por_mes, desempenho, erro_padrao, precisao_topo,
@@ -50,7 +50,7 @@ from motor.modelos_classificacao.metricas import (  # noqa: E402
 from motor.modelos_previsao.base import log_loss  # noqa: E402
 from motor.util import auc  # noqa: E402
 
-DESTINO = RAIZ / "amostra_redes" / "resultado" / "delta"
+DESTINO = RAIZ / "dados" / "amostra_redes" / "resultado" / "delta"
 BRACOS = {"a": False, "b": True}
 # braço P (controle): o delta embaralhado — mesma distribuição, informação zero. Só o LightGBM (o modelo
 # escolhido nos dois braços) é validado, nas MESMAS dobras, então o log-loss por dobra é comparável ao de A.
@@ -352,7 +352,7 @@ def rodar_inova(horizonte: int = 3) -> dict:
     """Mesmo A × B na INOVAAPPS (80 clientes, 22 cancelados) — referência pequena, roda em segundos."""
     from motor import Mapeamento, inspecionar, ler_arquivos, treinar
 
-    tab = ler_arquivos([RAIZ / "INOVAAPPS_base_de_dados.xlsx"])
+    tab = ler_arquivos([RAIZ / "dados" / "desafio" / "INOVAAPPS_base_de_dados.xlsx"])
     m = Mapeamento.de_sugestao(inspecionar(tab))
     m.horizonte_meses = horizonte
     bracos = {}

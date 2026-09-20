@@ -1,7 +1,7 @@
 """Roda o motor na amostra multi-rede (gerada por `preparar.py`) e compara os modelos nas mesmas dobras.
 
-Uso: uv run python analise/redes/rodar.py [--horizonte 3] [--min-hist 4] [--delta]
-     →  amostra_redes/resultado/h<H>_hist<N>[_delta]/*.json
+Uso: uv run python experimentos/redes/rodar.py [--horizonte 3] [--min-hist 4] [--delta]
+     →  dados/amostra_redes/resultado/h<H>_hist<N>[_delta]/*.json
 """
 
 from __future__ import annotations
@@ -19,14 +19,14 @@ if str(RAIZ) not in sys.path:
 from motor import Mapeamento, ler_arquivos, treinar  # noqa: E402
 from motor.config import Config  # noqa: E402
 
-BASE = RAIZ / "amostra_redes" / "base_motor"
-SAIDA = RAIZ / "amostra_redes" / "resultado"
+BASE = RAIZ / "dados" / "amostra_redes" / "base_motor"
+SAIDA = RAIZ / "dados" / "amostra_redes" / "resultado"
 
 
 def carregar():
     """Tabelas da base preparada (`preparar.py`)."""
     if not BASE.exists():
-        raise SystemExit(f"Base não preparada: rode `uv run python analise/redes/preparar.py` ({BASE})")
+        raise SystemExit(f"Base não preparada: rode `uv run python experimentos/redes/preparar.py` ({BASE})")
     return ler_arquivos(sorted(BASE.glob("*.csv")))
 
 

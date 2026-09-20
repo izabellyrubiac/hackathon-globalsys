@@ -1,6 +1,6 @@
-"""Prepara a amostra multi-rede (`amostra_redes/`) para o motor.
+"""Prepara a amostra multi-rede (`dados/amostra_redes/`) para o motor.
 
-Mesmas regras de rótulo da amostra de um posto só (ver `analise/preparo_comum.py`):
+Mesmas regras de rótulo da amostra de um posto só (ver `experimentos/redes/preparo_comum.py`):
 cancelou = 1º mês sem nenhuma compra depois da primeira compra · sem reavaliação depois da saída ·
 só meses completos (ago/2026 é parcial → referência = jul/2026).
 
@@ -14,7 +14,7 @@ Particularidades desta base:
 * Colunas de **estado atual** (pendente, situação, devolvido, data/valor de pagamento) são removidas:
   refletem o futuro em relação a cada linha do painel.
 
-Uso: uv run python analise/redes/preparar.py  →  amostra_redes/base_motor/*.csv
+Uso: uv run python experimentos/redes/preparar.py  →  dados/amostra_redes/base_motor/*.csv
 """
 
 from __future__ import annotations
@@ -30,11 +30,11 @@ RAIZ = Path(__file__).resolve().parents[2]
 if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
 
-from analise.preparo_comum import (  # noqa: E402
+from experimentos.redes.preparo_comum import (  # noqa: E402
     grupo_pagamento, para_data, para_mes, rotular, valor_mensal_medio,
 )
 
-ORIGEM = RAIZ / "amostra_redes"
+ORIGEM = RAIZ / "dados" / "amostra_redes"
 DESTINO = ORIGEM / "base_motor"
 MES_REF = pd.Period("2026-07", "M")      # último mês completo (ago/2026 é parcial)
 MES_FIM_ESPERADO = MES_REF + 1           # rede íntegra tem venda em ago/2026

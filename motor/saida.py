@@ -1,4 +1,4 @@
-"""Contrato dos JSON de resultado (usado pela API e por `analise/gerar_json.py`).
+"""Contrato dos JSON de resultado (usado pela API e por `experimentos/inovaapps/gerar_json.py`).
 
 Todos: determinísticos (mesma entrada → mesma saída; chaves ordenadas ao gravar), sem NaN (→ null),
 floats arredondados. Só `gerado_em` muda de um dia para o outro (fixável com GERADO_EM=AAAA-MM-DD).

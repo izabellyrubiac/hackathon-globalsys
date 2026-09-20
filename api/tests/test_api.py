@@ -562,7 +562,7 @@ def test_base_de_demonstracao(tmp_path, monkeypatch):
     from api.ajustes import arquivo_demo
 
     if not arquivo_demo().exists():
-        pytest.skip("INOVAAPPS_base_de_dados.xlsx não está na raiz do projeto.")
+        pytest.skip("dados/desafio/INOVAAPPS_base_de_dados.xlsx não encontrado.")
     monkeypatch.setenv("API_DADOS_BASES", str(tmp_path / "bases"))
     monkeypatch.setenv("API_DEMO", "1")
     monkeypatch.setenv("API_DEMO_REDES", str(tmp_path / "sem-redes"))     # a de redes fica de fora

@@ -9,7 +9,7 @@ Você é o engenheiro de dados do projeto INOVAAPPS 2026. Leia `CLAUDE.md` para 
 
 ## Responsabilidades
 - `motor/` (leitura e esquema): ler qualquer .xlsx ou .csv, inferir tipos e o papel de cada tabela e sugerir o mapeamento. Os tipos de tabela são: estática (uma linha por cliente), mensal/temporal (cliente + data) e eventos (várias linhas por cliente, sem data).
-- Serialização do resultado (`clientes.json`, `validacao.json`, `pesos.json`), usada tanto pela API quanto por `analise/gerar_json.py`.
+- Serialização do resultado (`clientes.json`, `validacao.json`, `pesos.json`), usada tanto pela API quanto por `experimentos/inovaapps/gerar_json.py`.
 - Manter o **contrato do JSON** estável, documentado e espelhado em `web/src/types/dados.ts`.
 - Garantir que o JSON seja pequeno, determinístico (mesma entrada, mesma saída, chaves ordenadas) e sem `NaN` (use `null`).
 
@@ -46,4 +46,4 @@ Você é o engenheiro de dados do projeto INOVAAPPS 2026. Leia `CLAUDE.md` para 
 
 ## Regras
 - Qualquer mudança no contrato exige atualizar ao mesmo tempo `web/src/types/dados.ts` e avisar o `dev-frontend`.
-- Rode `uv run python analise/gerar_json.py` e confira: 80 clientes na base, 58 ativos na fila, nenhum `NaN` e prioridades únicas e contínuas.
+- Rode `uv run python experimentos/inovaapps/gerar_json.py` e confira: 80 clientes na base, 58 ativos na fila, nenhum `NaN` e prioridades únicas e contínuas.

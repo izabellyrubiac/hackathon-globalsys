@@ -1,7 +1,7 @@
 """Bases de demonstração, registradas na subida da API (cada uma só se os arquivos existirem).
 
-    inovaapps   INOVAAPPS_base_de_dados.xlsx (raiz do projeto) — 80 clientes, 18 meses
-    redes       amostra_redes/base_motor/*.csv — 2.910 clientes de várias redes
+    inovaapps   dados/desafio/INOVAAPPS_base_de_dados.xlsx — 80 clientes, 18 meses
+    redes       dados/amostra_redes/base_motor/*.csv — 2.910 clientes de várias redes
 
 Aqui só se registra a base (arquivos + inspeção + mapeamento sugerido); o treino fica com
 `api/preparar_demos.py` ou com o `POST /api/bases/{id}/treinar` normal. Se um arquivo faltar, a base
