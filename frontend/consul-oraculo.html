@@ -31,6 +31,12 @@ p{margin:0}a{color:var(--pri)}.mut{color:var(--mut)}small{font-size:12px}
 input,select{width:100%;padding:9px 12px;border:1px solid var(--edge);border-radius:4px;background:var(--in);color:var(--ink);font:inherit}
 input[type=checkbox]{width:auto}input[type=range]{padding:0}input[type=checkbox],input[type=range]{accent-color:var(--pri)}
 .drop{margin-top:14px;border:2px dashed var(--acc);border-radius:4px;padding:30px;text-align:center;background:#f7f9fe;cursor:pointer}
+.ov{position:fixed;inset:0;z-index:40;display:grid;place-items:center;padding:16px;background:#1f243073}
+.pp{display:flex;flex-direction:column;width:min(900px,100%);height:min(720px,calc(100vh - 32px));padding:28px;background:var(--card);border:1px solid var(--edge);border-radius:4px;box-shadow:0 16px 48px #1f243040}
+.pp h2{margin-bottom:18px;font-size:22px}.pp .drop{flex:1;min-height:180px;margin-top:0;display:grid;place-content:center;font-size:18px}
+.arqs{list-style:none;margin:16px 0 0;padding:0;flex:none;max-height:40%;overflow:auto}.arqs li{display:flex;align-items:center;gap:10px;margin-bottom:6px;padding:8px 10px;border-radius:4px;background:var(--soft);font-size:14px}
+.arqs li span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.arqs button{border:0;padding:0 4px;background:transparent;color:var(--mut);font-size:18px;line-height:1;cursor:pointer}
+.acoes{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
 .drop:focus-visible{outline-offset:4px}
 .tabs{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.tabs .chip{padding:4px 12px}
 .chip{display:inline-block;font-size:12px;background:var(--soft);color:var(--ink);border-radius:4px;padding:2px 10px;margin:1px}
@@ -130,6 +136,7 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border:2px solid #fff
 <main class="main" id="mn"></main>
 </div>
 <div id="dw"></div>
+<div id="pp"></div>
 <script>
 const $=i=>document.getElementById(i),
   esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])),
@@ -150,7 +157,9 @@ const S={
   criado:null,   // id do modelo recém-treinado (mensagem do passo 4)
   titulo:'',     // campo "Título do modelo"
   rank:null,     // fila do modelo ativo
-  analise:null   // resultado do botão "Analisar dados"
+  analise:null,  // resultado do botão "Analisar dados"
+  pop:null,      // popup de envio: {arquivos:[File]} enquanto aberto
+  espera:null    // {arquivos:[nomes]} enquanto aguarda a resposta do backend
 };
 
 /* ---------- ranking (mock do backend) ---------- */
@@ -225,8 +234,10 @@ function usarModelo(id,ir){
   api.ranking(mod).then(r=>{if(S.ativo==id){S.rank=r;if(rota()=='ranking')render()}});
   if(ir&&rota()!='ranking')location.hash='#/ranking';else render();
 }
-function carregarDemo(){
-  setData(demo(),'dados_demonstracao.xlsx');
+async function carregarDemo(){
+  S.espera={arquivos:['dados_demonstracao.xlsx']};render();
+  await esperarBackend();
+  S.espera=null;setData(demo(),'dados_demonstracao.xlsx');
   MODELOS_DEMO.forEach(m=>{if(!S.modelos.some(x=>x.id==m.id))S.modelos.push({...m})});
   if(!S.ativo)usarModelo(MODELOS_DEMO.at(-1).id);else render();
   toast('Base de demonstração carregada, com 3 modelos já treinados.');
@@ -262,17 +273,55 @@ const compTxt=m=>`${nf(m.recente)} ${m.meses_recente==1?'no último mês':'nos �
 
 /* ---------- leitura da base ---------- */
 const colsOf=n=>Object.keys(S.sheets[n][0]||{});
-function load(f){
-  if(!f)return;
+const lerArquivo=f=>new Promise((ok,er)=>{
   const r=new FileReader();
   r.onload=()=>{try{
     const wb=XLSX.read(r.result,{type:'array',cellDates:true}),sh={};
     wb.SheetNames.forEach(n=>{const j=XLSX.utils.sheet_to_json(wb.Sheets[n],{defval:''});if(j.length)sh[/\.csv$/i.test(f.name)?f.name.replace(/\.csv$/i,''):n]=j});
     if(!Object.keys(sh).length)throw 0;
-    setData(sh,f.name);
-  }catch(e){toast('Não foi possível ler o arquivo. Envie .xlsx, .xls ou .csv.')}};
-  r.readAsArrayBuffer(f);
+    ok(sh);
+  }catch(e){er(f.name)}};
+  r.onerror=()=>er(f.name);r.readAsArrayBuffer(f);
+});
+/* O backend recebe os arquivos, inspeciona as tabelas e devolve o mapeamento sugerido. Por enquanto a leitura é local e a
+   resposta do backend é simulada por uma espera; trocar `esperarBackend` pelo POST /api/bases quando a tela usar a API. */
+const esperarBackend=()=>new Promise(ok=>setTimeout(ok,1200));
+async function enviar(arquivos){
+  S.espera={arquivos:arquivos.map(f=>f.name)};render();
+  try{
+    const [partes]=await Promise.all([Promise.all(arquivos.map(lerArquivo)),esperarBackend()]);
+    S.espera=null;setData(Object.assign({},...partes),arquivos.map(f=>f.name).join(', '));
+  }catch(nome){S.espera=null;render();toast(`Não foi possível ler ${nome}. Envie .xlsx, .xls ou .csv.`)}
 }
+
+/* ---------- popup de envio da base ---------- */
+const kb=n=>(n/1024).toLocaleString('pt-BR',{maximumFractionDigits:0})+' KB';
+function abrirPopup(){S.pop={arquivos:[]};pintarPopup();$('pp').querySelector('.drop')?.focus()}
+function fecharPopup(){S.pop=null;$('pp').innerHTML=''}
+function addArquivos(lista){
+  if(!S.pop)return;
+  const novos=[...lista],ok=novos.filter(f=>/\.(xlsx|xls|csv)$/i.test(f.name));
+  if(ok.length<novos.length)toast('Só arquivos .xlsx, .xls e .csv.');
+  ok.forEach(f=>{if(!S.pop.arquivos.some(x=>x.name==f.name))S.pop.arquivos.push(f)});
+  pintarPopup();$('pp').querySelector('.drop')?.focus();
+}
+function tirarArquivo(i){S.pop.arquivos.splice(i,1);pintarPopup()}
+function confirmarPopup(){const a=S.pop.arquivos;if(!a.length)return;fecharPopup();enviar(a)}
+function pintarPopup(){
+  if(!S.pop)return;
+  const a=S.pop.arquivos;
+  $('pp').innerHTML=`<div class="ov"><div class="pp" role="dialog" aria-modal="true" aria-labelledby="pp-t"><h2 id="pp-t">Enviar base de dados</h2>
+<div class="drop" tabindex="0" role="button" onclick="$('fi').click()" onkeydown="if(event.key=='Enter'||event.key==' '){event.preventDefault();$('fi').click()}" ondragover="event.preventDefault()" ondrop="event.preventDefault();addArquivos(event.dataTransfer.files)"><input id="fi" type="file" multiple accept=".xlsx,.xls,.csv" hidden onchange="addArquivos(this.files);this.value=''"><b>Clique ou arraste um csv/xlsx</b></div>
+${a.length?`<ul class="arqs" aria-label="Arquivos escolhidos">${a.map((f,i)=>`<li><span>${esc(f.name)}</span><small class="mut">${kb(f.size)}</small><button aria-label="Remover ${esc(f.name)}" onclick="tirarArquivo(${i})">×</button></li>`).join('')}</ul>`:''}
+<div class="acoes"><button class="btn ghost" onclick="fecharPopup()">Cancelar</button><button class="btn" onclick="confirmarPopup()" ${a.length?'':'disabled'}>Confirmar</button></div></div></div>`;
+}
+$('pp').addEventListener('keydown',e=>{                       // Tab circula dentro do popup
+  if(e.key!='Tab')return;
+  const f=[...$('pp').querySelectorAll('button:not(:disabled),[tabindex="0"]')];if(!f.length)return;
+  const i=f.indexOf(document.activeElement);
+  if(e.shiftKey&&i<=0){e.preventDefault();f.at(-1).focus()}else if(!e.shiftKey&&i==f.length-1){e.preventDefault();f[0].focus()}
+});
+
 function setData(sh,name){S.sheets=sh;S.file=name;S.sel={};S.w={};S.criado=null;S.titulo='';S.treino=null;S.analise=null;sugerir();render()}
 
 /* sugestão automática do mapeamento; o usuário confirma na tela */
@@ -455,7 +504,7 @@ ${h.length?'<p class="mut" style="font-size:12px">Gráficos: '+esc(mesFmt(h[0].m
   $('fx').focus();
 }
 const fechar=()=>{$('dw').innerHTML=''};
-document.addEventListener('keydown',e=>{if(e.key=='Escape')fechar()});
+document.addEventListener('keydown',e=>{if(e.key=='Escape'){if(S.pop)fecharPopup();else fechar()}});
 
 const opts=(vals,cur,ph)=>`<option value="">${ph}</option>`+vals.map(v=>`<option value="${esc(v)}" ${v===cur?'selected':''}>${esc(v)}</option>`).join('');
 function par(label,tk,ck,tv,cv){
@@ -598,9 +647,10 @@ function viewTreinar(){
   const head=`<div class="head"><h1>Modelos</h1></div>`;
   const lista=S.modelos.length?`<div class="card"><h2>Modelos treinados</h2><div class="tw" style="margin-top:8px"><table><tr><th>Título</th><th>Algoritmo</th><th>Base</th><th>Criado em</th><th>Variáveis</th><th>Pesos</th><th>AUC</th><th></th></tr>
 ${[...S.modelos].reverse().map(x=>`<tr><td><b>${esc(x.titulo)}</b>${x.id==S.ativo?' <span class="chip">em uso no ranking</span>':''}</td><td>${esc(x.algoritmo)}</td><td>${esc(x.base)}</td><td class="num">${dataHora(x.criado_em)}</td><td class="num">${x.variaveis}</td><td>${x.modo=='manual'?'Manual':'Automático'}</td><td class="num">${String(x.auc).replace('.',',')}</td><td><button class="btn ghost sm" onclick="usarModelo('${esc(x.id)}',true)">Ver ranking</button></td></tr>`).join('')}</table></div></div>`:'';
-  const dados=`<div class="card ${S.sheets?'ok':''}"><h2><span class="n">1</span>Dados</h2><div class="drop" tabindex="0" role="button" onclick="$('fi').click()" onkeydown="if(event.key=='Enter'||event.key==' '){event.preventDefault();$('fi').click()}" ondragover="event.preventDefault()" ondrop="event.preventDefault();load(event.dataTransfer.files[0])"><input id="fi" type="file" accept=".xlsx,.xls,.csv" hidden onchange="load(this.files[0])"><b>Clique ou arraste um csv/xlsx</b><p class="mut">${S.file?esc(S.file):'Nenhum arquivo selecionado'}</p></div>
-<p style="margin-top:10px"><a href="#/modelos" onclick="carregarDemo();return false">ou usar dados de demonstração</a></p>
-${S.sheets?`<div class="tabs">${Object.entries(S.sheets).map(([n,r])=>`<span class="chip">${esc(n)} · ${r.length} linhas · ${colsOf(n).length} colunas</span>`).join('')}</div>`:''}</div>`;
+  const dados=`<div class="card ${S.sheets?'ok':''}"><h2><span class="n">1</span>Dados</h2>
+<div style="margin-top:12px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px"><button class="btn ${S.sheets?'ghost':''}" onclick="abrirPopup()">${S.sheets?'Enviar outra base':'Enviar base de dados'}</button>${S.sheets?'':`<a href="#/modelos" onclick="carregarDemo();return false">ou usar dados de demonstração</a>`}</div>
+${S.sheets?`<p class="mut" style="margin-top:12px">${esc(S.file)}</p><div class="tabs">${Object.entries(S.sheets).map(([n,r])=>`<span class="chip">${esc(n)} · ${r.length} linhas · ${colsOf(n).length} colunas</span>`).join('')}</div>`:''}</div>`;
+  if(S.espera)return head+lista+`<div class="card" style="text-align:center" role="status" aria-live="polite"><h2 style="justify-content:center">Aguardando a resposta do backend</h2><div class="ring"></div><p class="mut">Enviando ${esc(S.espera.arquivos.join(', '))} e inspecionando as tabelas…</p></div>`;
   if(!S.sheets)return head+lista+dados;
   const m=S.m;
   const mapa=`<div class="card"><h2><span class="n">2</span>O que prever</h2><p class="sub mut">Sugerimos automaticamente; confira e corrija se preciso.</p><div class="form">
