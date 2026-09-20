@@ -461,43 +461,6 @@ def test_execucao_com_erro_nao_vira_ativa(cliente, base):
         assert r.status_code == 422
 
 
-def test_migracao_do_layout_antigo(cliente, tmp_path):
-    """Base gravada no layout velho (resultados na raiz) vira a execução `legado`, já ativa."""
-    import shutil
-
-    from api import armazenamento as arm
-
-    origem = cliente.post("/api/bases", files=sintetica.arquivos()).json()["base_id"]
-    assert treinar(cliente, origem).status_code == 202
-    assert esperar(cliente, origem)["estado"] == "pronta"
-    eid = cliente.get(f"/api/bases/{origem}/execucoes").json()["execucao_ativa"]
-
-    antiga = arm.novo_base_id("antiga")
-    p = arm.pasta(antiga)
-    shutil.copytree(arm.pasta(origem) / "arquivos", p / "arquivos")
-    for nome in ("base.json", "inspecao.json", "mapeamento.json", "config.json"):
-        shutil.copyfile(arm.pasta(origem) / nome, p / nome)
-    arm.gravar_json(p / "base.json", {**arm.ler_json(p / "base.json"), "base_id": antiga})
-    for nome in arm.RESULTADOS:
-        shutil.copyfile(arm.pasta_execucao(origem, eid) / f"{nome}.json", p / f"{nome}.json")
-    arm.gravar_json(p / "status.json", {"base_id": antiga, "estado": "pronta", "etapa": "concluído",
-                                        "segundos": 12.5, "avisos": [], "opcoes": {"modelo": "auto"}})
-    cliente.delete(f"/api/bases/{origem}")
-
-    try:
-        lista = cliente.get(f"/api/bases/{antiga}/execucoes").json()
-        assert lista["execucao_ativa"] == "legado"
-        assert [e["execucao_id"] for e in lista["execucoes"]] == ["legado"]
-        legado = lista["execucoes"][0]
-        assert legado["estado"] == "pronta" and legado["ativa"] is True
-        assert legado["resumo"]["n_clientes"] == 28 and legado["resumo"]["modelo"]["nome"]
-        assert cliente.get(f"/api/bases/{antiga}/clientes?limite=1").json()["execucao_id"] == "legado"
-        assert not (p / "clientes.json").exists() and not (p / "status.json").exists()
-        assert cliente.get(f"/api/bases/{antiga}/status").json()["estado"] == "pronta"
-    finally:
-        cliente.delete(f"/api/bases/{antiga}")
-
-
 # --------------------------------------------------------------------------- delta de risco
 def test_treino_com_delta_risco(cliente):
     r = cliente.post("/api/bases", files=sintetica.arquivos())

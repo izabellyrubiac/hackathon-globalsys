@@ -18,7 +18,6 @@ atendimento explicada**: o risco de cada cliente, as variáveis que estão dispa
 | `dados/` | `desafio/` (xlsx e PDF do desafio), `amostra_redes/` (bases reais, fora do git) e `bases/` (uploads da API, fora do git). |
 | `api/` | API FastAPI: enviar base, mapear, treinar, comparar versões e servir a fila. |
 | `web/` | O app: React + Vite + TypeScript. Três telas — Modelos, Fila e Validação — falando com a API. |
-| `frontend/` | O protótipo em HTML que deu origem ao app. Referência visual; não se edita. |
 | `tests/` | Testes do motor. Os da API ficam em `api/tests/`. |
 
 Ambiente Python com **uv**. Não há banco de dados: bases e resultados são arquivos.

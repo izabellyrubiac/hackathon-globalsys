@@ -274,7 +274,7 @@ def clientes_json(r, gerado: str) -> dict:
 # --------------------------------------------------------------------------- validacao.json
 def validacao_json(r, gerado: str) -> dict:
     from .treino import desempenho_metodos
-    from .validar import auc_por_mes, precisao_topo
+    from .modelos_classificacao.metricas import auc_por_mes, precisao_topo
 
     P, cfg = r.painel, r.config
     T = P[P["treino"]]
@@ -319,7 +319,7 @@ def validacao_json(r, gerado: str) -> dict:
                    "min_dobras": float(d.min()) if d.notna().any() else None,
                    "max_dobras": float(d.max()) if d.notna().any() else None})
     canc = []
-    from .validar import faixa
+    from .modelos_classificacao.metricas import faixa
     for cid in cli.index[cli.to_numpy()]:
         q = P[(P["cliente"] == cid)].set_index("k")
         item = {"cliente_id": cid, "mes_saida": _mes(r.base.mes_saida.get(cid)),

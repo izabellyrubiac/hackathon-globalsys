@@ -133,7 +133,7 @@ uma execução que falha vira `estado: "erro"` com a mensagem e os problemas em 
 pedidos em sequência entram numa fila e rodam um por vez (`API_TREINOS_SIMULTANEOS`, padrão 1).
 
 **O que precisaria ganhar**: um sinal de cancelamento conferido dentro do laço de dobras de
-`motor/validar.py` e uma rota `POST /api/bases/{id}/execucoes/{eid}/cancelar`.
+`motor/modelos_classificacao/validacao_cruzada.py` e uma rota `POST /api/bases/{id}/execucoes/{eid}/cancelar`.
 
 ---
 

@@ -39,7 +39,6 @@ ESTADOS = ("na_fila", "treinando", "pronta", "erro")
 ATIVAS = ("na_fila", "treinando")           # execuções que ainda vão mexer no disco
 RESULTADOS = ("clientes", "validacao", "pesos")
 DEMONSTRACOES = ("inovaapps", "redes")
-LEGADO = "legado"
 
 _RE_ID = re.compile(r"^[a-z0-9][a-z0-9._-]{0,80}$")
 _RE_EXEC = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,80}$")   # o id tem o "T" do carimbo de tempo
@@ -110,7 +109,6 @@ def exigir(base_id: str) -> Path:
     p = pasta(base_id)
     if not (p / "base.json").exists():
         raise ErroArmazenamento(f"Base '{base_id}' não encontrada. Envie a base em POST /api/bases.", 404)
-    migrar(base_id)
     return p
 
 
@@ -428,43 +426,3 @@ def apagar(base_id: str) -> None:
     with _lock_geral:
         for chave in [k for k in _locks if k == base_id or k.startswith(f"{base_id}/")]:
             _locks.pop(chave, None)
-
-
-# --------------------------------------------------------------------------- migração do layout antigo
-def migrar(base_id: str) -> str | None:
-    """Layout antigo (resultados na raiz da base) → execução `legado`, marcada como ativa.
-
-    Sem resultado nenhum na raiz, só limpa o `status.json` velho. Devolve o id criado ou None.
-    """
-    p = pasta(base_id)
-    velho = p / "status.json"
-    resultados = [n for n in RESULTADOS if (p / f"{n}.json").exists()]
-    if not resultados and not velho.exists():
-        return None
-    if not resultados:
-        velho.unlink(missing_ok=True)
-        return None
-    destino = p / "execucoes" / LEGADO
-    destino.mkdir(parents=True, exist_ok=True)
-    for nome in resultados:
-        shutil.move(str(p / f"{nome}.json"), str(destino / f"{nome}.json"))
-    for nome in ("mapeamento.json", "config.json"):
-        if (p / nome).exists() and not (destino / nome).exists():
-            shutil.copyfile(p / nome, destino / nome)
-    antigo = ler_json(velho) or {}
-    velho.unlink(missing_ok=True)
-    clientes = ler_json(destino / "clientes.json") or {}
-    st = _status_inicial(base_id, LEGADO, rotulo="migrada do layout antigo", estado="pronta",
-                         etapa="concluído", fracao=1.0, pid=None,
-                         n_clientes=len(clientes.get("clientes", [])),
-                         segundos=float(antigo.get("segundos") or 0.0),
-                         avisos=list(antigo.get("avisos", [])), opcoes=antigo.get("opcoes"),
-                         iniciado_em=antigo.get("iniciado_em"), concluido_em=antigo.get("atualizado_em"))
-    gravar_json(destino / "status.json", st)
-    from .resumo import montar_resumo     # importado aqui para evitar ciclo de import
-
-    gravar_json(destino / "resumo.json",
-                montar_resumo(clientes, ler_json(destino / "validacao.json") or {},
-                              ler_json(destino / "pesos.json") or {}, st))
-    gravar_json(p / "ativo.json", {"execucao_id": LEGADO, "ativada_em": agora()})
-    return LEGADO

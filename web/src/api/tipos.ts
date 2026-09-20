@@ -6,7 +6,6 @@
  */
 
 export type Faixa = 'alto' | 'atencao' | 'baixo'
-export const FAIXAS: Faixa[] = ['alto', 'atencao', 'baixo']
 
 export type EstadoExecucao = 'na_fila' | 'treinando' | 'pronta' | 'erro'
 export type EstadoBase = 'inspecionada' | EstadoExecucao

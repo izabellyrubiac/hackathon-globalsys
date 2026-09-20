@@ -31,15 +31,6 @@ def test_import_lightgbm_e_a_biblioteca():
     assert mod.VERSAO_LIGHTGBM == lib.__version__
 
 
-def test_reexport_compatibilidade():
-    from motor import modelo, validar
-    from motor.modelos_classificacao import metricas, validacao_cruzada
-    from motor.modelos_previsao import logistica
-    assert modelo.ajustar is logistica.ajustar and modelo.Modelo is logistica.Modelo
-    assert validar.validar is validacao_cruzada.validar and validar.curva is metricas.curva
-    assert validar.escolher_cortes is metricas.escolher_cortes and validar.faixa is metricas.faixa
-
-
 # --------------------------------------------------------------------------- INOVAAPPS
 def test_inova_escolhe_logistica(inova):
     _, _, r = inova

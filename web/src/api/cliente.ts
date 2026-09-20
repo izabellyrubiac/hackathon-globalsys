@@ -78,9 +78,6 @@ export function enviarBase(arquivos: File[], s?: AbortSignal) {
   return pedir<BaseCriada>('/api/bases', { method: 'POST', body: corpo, signal: s })
 }
 
-export const apagarBase = (id: string) =>
-  pedir<null>(`/api/bases/${encodeURIComponent(id)}`, { method: 'DELETE' })
-
 export const treinar = (id: string, pedido: PedidoTreino, s?: AbortSignal) =>
   pedir<TreinoAceito>(`/api/bases/${encodeURIComponent(id)}/treinar`, json(pedido, s))
 
